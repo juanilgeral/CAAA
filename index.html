@@ -415,18 +415,18 @@
   textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
 
   /* ---------- OPTIONS ---------- */
-  .options-grid { display: grid; gap: 8px; }
+  .options-grid { display: grid; gap: 5px; }
   .options-grid.cols-2 { grid-template-columns: 1fr 1fr; }
   .options-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
 
   .opt-item {
     display: flex;
     align-items: flex-start;
-    gap: 10px;
+    gap: 7px;
     background: #fff;
     border: 1.5px solid var(--border);
     border-radius: 3px;
-    padding: 11px 13px;
+    padding: 6px 10px;
     cursor: pointer;
     transition: all 0.18s;
     user-select: none;
@@ -434,15 +434,15 @@
   .opt-item:hover { border-color: var(--navy-light); background: #fafbfc; }
   .opt-item input[type="radio"],
   .opt-item input[type="checkbox"] {
-    width: 16px; height: 16px;
-    min-width: 16px;
+    width: 14px; height: 14px;
+    min-width: 14px;
     margin-top: 1px;
     accent-color: var(--navy);
     cursor: pointer;
   }
   .opt-item.selected { border-color: var(--navy); background: rgba(13,27,42,0.04); }
-  .opt-item .opt-label { font-size: 13px; line-height: 1.45; color: var(--text); }
-  .opt-item .opt-sub { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+  .opt-item .opt-label { font-size: 12px; line-height: 1.4; color: var(--text); }
+  .opt-item .opt-sub { font-size: 10.5px; color: var(--text-light); margin-top: 1px; }
 
   /* ---------- MEMBER BLOCK ---------- */
   .member-block {
@@ -563,18 +563,21 @@
 
   /* ---------- DECISION GRID ---------- */
   .decision-card {
-    border: 2px solid var(--border);
-    border-radius: 4px;
-    padding: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 9px;
     cursor: pointer;
     transition: all 0.2s;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    text-align: left;
   }
   .decision-card:hover { border-color: var(--navy-light); }
   .decision-card.selected-card { border-color: var(--navy); background: rgba(13,27,42,0.04); }
-  .decision-card .dc-icon { font-size: 28px; margin-bottom: 8px; }
-  .decision-card .dc-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-  .decision-card .dc-sub { font-size: 11.5px; color: var(--text-light); line-height: 1.4; }
+  .decision-card .dc-icon { font-size: 13px; flex-shrink: 0; margin-bottom: 0; }
+  .decision-card .dc-title { font-weight: 600; font-size: 11px; margin-bottom: 0; line-height: 1.3; }
+  .decision-card .dc-sub { font-size: 9.5px; color: var(--text-light); line-height: 1.25; }
 
   /* ---------- SIGNATURE BOX ---------- */
   .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -657,17 +660,18 @@
   .parecer-voto-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 5px;
+    margin-bottom: 10px;
   }
   .voto-opt {
     border: 1.5px solid var(--border);
     border-radius: 3px;
-    padding: 10px 12px;
+    padding: 4px 8px;
     text-align: center;
     cursor: pointer;
     transition: all 0.18s;
-    font-size: 12.5px;
+    font-size: 10.5px;
+    line-height: 1.4;
   }
   .voto-opt:hover { border-color: var(--navy-light); }
   .voto-opt.voto-selected { border-color: var(--navy); background: rgba(13,27,42,0.05); font-weight: 600; }
