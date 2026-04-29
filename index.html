@@ -3089,15 +3089,28 @@
 
   // ---- Restore form data ----
   function restoreFormData(data) {
-    // Limpa todo o estado visual antes de restaurar (evita resíduos do processo anterior)
+    // ── 1. Limpa todo estado visual (evita resíduos do processo anterior) ──────
     document.querySelectorAll('.opt-item').forEach(el => el.classList.remove('selected'));
     document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
     document.querySelectorAll('.voto-opt').forEach(el => el.classList.remove('voto-selected'));
     document.querySelectorAll('.di-voto-registro, [id$="_votoTexto"], #decisaoTexto, #fc_decisaoTexto').forEach(function(el) {
       el.textContent = ''; el.style.display = 'none';
     });
-    // Limpa hidden inputs também
+    // Limpa hidden inputs
     document.querySelectorAll('input[type="hidden"][id]').forEach(el => { el.value = ''; });
+
+    // ── 2. Remove TODOS os divs de registro por extenso criados anteriormente ──
+    // (tanto os com data-rid no grid quanto os reg_restore_* soltos no DOM)
+    document.querySelectorAll('.options-grid[data-rid]').forEach(function(grid) {
+      var rid = grid.dataset.rid;
+      var div = document.getElementById(rid);
+      if (div) div.remove();
+      delete grid.dataset.rid;
+    });
+    // Remove divs com id começando por reg_restore_ que podem ter sobrado
+    document.querySelectorAll('[id^="reg_restore_"]').forEach(function(el) { el.remove(); });
+    // Remove divs com id começando por reg_ que foram criados pelo toggleOpt
+    document.querySelectorAll('[id^="reg_"]').forEach(function(el) { el.remove(); });
 
     document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
       if (data[el.id] !== undefined) el.value = data[el.id];
@@ -3142,9 +3155,9 @@
         }
       });
     }
-    // Sync Comunicação da Decisão form
+    // Sync Comunicação da Decisão form (skipAutoFill=true para não sobrescrever campos já restaurados)
     if (data.decisaoTipo) {
-      setTimeout(function(){ syncFcDecisao(data.decisaoTipo); }, 300);
+      setTimeout(function(){ syncFcDecisao(data.decisaoTipo, true); }, 300);
     }
     // Voto opts
     ['p1','p2','p3','p4'].forEach(p => {
@@ -3557,13 +3570,14 @@
     document.querySelectorAll('.opt-item').forEach(el => el.classList.remove('selected'));
     document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
     document.querySelectorAll('.voto-opt').forEach(el => el.classList.remove('voto-selected'));
-    // Limpa os divs de registro por extenso das options-grids
     document.querySelectorAll('.options-grid[data-rid]').forEach(function(grid) {
       var rid = grid.dataset.rid;
       var div = document.getElementById(rid);
-      if (div) { div.style.display = 'none'; div.innerHTML = ''; }
+      if (div) div.remove();
       delete grid.dataset.rid;
     });
+    // Remove todos os divs de registro soltos no DOM
+    document.querySelectorAll('[id^="reg_restore_"], [id^="reg_"]').forEach(function(el) { el.remove(); });
     // Limpa os textos de voto/decisao registrados
     document.querySelectorAll('.di-voto-registro, [id$="_votoTexto"], #decisaoTexto, #fc_decisaoTexto').forEach(function(el) {
       el.textContent = ''; el.style.display = 'none';
@@ -3836,7 +3850,8 @@
   };
 
   // Atualiza o texto e card no formComunicacao a partir de um valor
-  function syncFcDecisao(val) {
+  // skipAutoFill=true evita sobrescrever campos já restaurados (usado em restoreFormData)
+  function syncFcDecisao(val, skipAutoFill) {
     // Selecionar card correspondente no formComunicacao
     var fcCards = document.querySelectorAll('#formComunicacao .decision-card');
     var map = ['sem_culpa','culpa','dolo'];
@@ -3851,6 +3866,7 @@
       fcTexto.textContent = DECISAO_LABELS[val] || '';
       fcTexto.style.display = val ? 'block' : 'none';
     }
+    if (skipAutoFill) return; // em restore, não sobrescreve campos já carregados do BD
     // Sugerir penalidade no select se ainda não preenchido
     var fcPen = document.getElementById('fc_penalidade');
     if (fcPen && (!fcPen.value || fcPen.value === '')) {
