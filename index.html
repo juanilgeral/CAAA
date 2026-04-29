@@ -2941,322 +2941,69 @@
 
 <script>
 // ============================================================
-// CAAA - SISTEMA CORRIGIDO (Versão Estável - 28/04/2026)
+// LOCK SCREEN — SENHA DE ACESSO (VERSÃO SIMPLIFICADA)
 // ============================================================
-const DB_NAME = 'CAAA_DB';
-const DB_VERSION = 4;   // Versão aumentada para resetar estrutura antiga
-const STORE = 'processos';
-let db = null;
-let currentId = null;
-let autoSaveTimer = null;
-let isRestoring = false;
+(function() {
+    const SENHA_CORRETA = "@admin0768#";   // Senha simples e direta
 
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const d = e.target.result;
-      if (d.objectStoreNames.contains(STORE)) d.deleteObjectStore(STORE);
-      const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-      store.createIndex('numProc', 'numProc', { unique: false });
-      store.createIndex('nomeEmp', 'nomeEmp', { unique: false });
-      store.createIndex('updatedAt', 'updatedAt', { unique: false });
-    };
-    req.onsuccess = (e) => { 
-      db = e.target.result; 
-      console.log('✅ Banco IndexedDB aberto com sucesso (v' + DB_VERSION + ')');
-      resolve(db); 
-    };
-    req.onerror = (e) => {
-      console.error('Erro IndexedDB:', e);
-      document.getElementById('dbStatus').innerHTML = '⚠ Erro ao abrir banco';
-      reject(e);
-    };
-  });
-}
+    const SESSION_KEY = 'caaa_auth_session';
 
-// Coleta dados do formulário
-function collectFormData() {
-  const data = {};
-  document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => data[el.id] = el.value);
-
-  const radioNames = ['comunicou','instaurar','formaNotif','compareceu','modalDefesa','falhaManu','solicitouPrazo','gravada','penalidade','haDesconto','haTerceiro'];
-  radioNames.forEach(name => {
-    const checked = document.querySelector(`input[name="${name}"]:checked`);
-    data['radio_' + name] = checked ? checked.value : '';
-  });
-
-  data.decisaoTipo = document.getElementById('decisaoTipo')?.value || '';
-  data.numProc = document.getElementById('numProc').value || '';
-  data.nomeEmp = document.getElementById('nomeEmp').value || '';
-  data.placaBem = document.getElementById('placaBem').value || '';
-  data.updatedAt = new Date().toISOString();
-
-  return data;
-}
-
-// Sugere próximo número
-async function sugerirProximoNumProc() {
-  if (!db) return `CAAA-0001/${new Date().getFullYear()}`;
-
-  return new Promise(resolve => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = () => {
-      const records = req.result || [];
-      const ano = new Date().getFullYear();
-      const numeros = records
-        .map(r => r.numProc)
-        .filter(n => n && n.match(/^CAAA-\d{4}\/\d{4}$/))
-        .map(n => parseInt(n.match(/CAAA-(\d{4})/)[1], 10))
-        .filter(n => !isNaN(n));
-
-      const proximo = numeros.length ? Math.max(...numeros) + 1 : 1;
-      resolve(`CAAA-${proximo.toString().padStart(4, '0')}/${ano}`);
-    };
-    req.onerror = () => resolve(`CAAA-0001/${new Date().getFullYear()}`);
-  });
-}
-
-// Salvar
-async function salvarNoDB(showMsg = true) {
-  if (!db) return;
-  const data = collectFormData();
-  if (!data.numProc && !data.nomeEmp) return;
-
-  if (currentId) data.id = currentId;
-
-  const tx = db.transaction(STORE, 'readwrite');
-  const req = currentId ? tx.objectStore(STORE).put(data) : tx.objectStore(STORE).add(data);
-
-  req.onsuccess = () => {
-    if (!currentId) currentId = req.result;
-    if (showMsg) showSaveIndicator('✓ Salvo automaticamente');
-    updateDbStatus();
-  };
-}
-
-function showSaveIndicator(msg) {
-  const ind = document.getElementById('saveIndicator');
-  ind.textContent = msg;
-  ind.classList.add('show');
-  setTimeout(() => ind.classList.remove('show'), 2500);
-}
-
-function updateDbStatus() {
-  const el = document.getElementById('dbStatus');
-  if (currentId) el.textContent = `Proc. #${currentId}`;
-}
-
-// Novo Processo
-async function novoProcesso() {
-  if (currentId) await salvarNoDB(false);
-  if (!confirm('Iniciar novo processo?')) return;
-
-  isRestoring = true;
-  currentId = null;
-
-  document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
-    if (el.type !== 'hidden') el.value = '';
-  });
-  document.querySelectorAll('.opt-item').forEach(el => el.classList.remove('selected'));
-  document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
-
-  const proximo = await sugerirProximoNumProc();
-  document.getElementById('numProc').value = proximo;
-  updateBadge();
-
-  document.getElementById('blocoTerceiro').style.display = 'none';
-  goTo(0);
-  showSaveIndicator(`➕ Novo processo — ${proximo}`);
-  setTimeout(() => isRestoring = false, 500);
-}
-
-// Exportar
-async function exportarBackup() {
-  if (!db) return alert('Banco não está pronto.');
-  const tx = db.transaction(STORE, 'readonly');
-  const req = tx.objectStore(STORE).getAll();
-  req.onsuccess = () => {
-    const records = req.result || [];
-    const payload = { exportedAt: new Date().toISOString(), records };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `CAAA_backup_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showSaveIndicator(`⬇️ Backup exportado (${records.length} processos)`);
-  };
-}
-
-// Importar
-function importarBackup(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  event.target.value = '';
-
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    let payload;
-    try { payload = JSON.parse(e.target.result); } catch(err) {
-      alert('Arquivo JSON inválido.');
-      return;
+    // Se já estiver logado na sessão, pula a tela
+    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+        document.getElementById('lockScreen').style.display = 'none';
+        return;
     }
 
-    const records = Array.isArray(payload.records) ? payload.records : [];
-    if (!records.length) return alert('Nenhum processo encontrado no arquivo.');
+    window.tentarSenha = function() {
+        const inp = document.getElementById('lockInput');
+        const errEl = document.getElementById('lockError');
+        const val = inp ? inp.value.trim() : '';
 
-    const substituir = confirm(`Importar ${records.length} processos?\n\nOK = Adicionar\nCancelar = Apagar tudo e substituir`);
+        if (!val) {
+            if (errEl) errEl.textContent = 'Digite a senha para continuar.';
+            return;
+        }
 
-    if (!substituir) {
-      if (!confirm('⚠️ Apagar TODOS os processos atuais?')) return;
-      await new Promise(r => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).clear();
-        tx.oncomplete = r;
-      });
-    }
+        if (val === SENHA_CORRETA) {
+            sessionStorage.setItem(SESSION_KEY, '1');
+            const ls = document.getElementById('lockScreen');
+            if (ls) {
+                ls.classList.add('unlocked');
+                setTimeout(() => { ls.style.display = 'none'; }, 550);
+            }
+        } else {
+            if (inp) {
+                inp.classList.add('shake');
+                inp.value = '';
+                setTimeout(() => { inp.classList.remove('shake'); inp.focus(); }, 400);
+            }
+            if (errEl) {
+                errEl.textContent = '❌ Senha incorreta. Tente novamente.';
+                setTimeout(() => { errEl.textContent = ''; }, 3000);
+            }
+        }
+    };
 
-    let count = 0;
-    for (const rec of records) {
-      const novo = {...rec};
-      delete novo.id;
-      await new Promise(res => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).add(novo).onsuccess = () => { count++; res(); };
-      });
-    }
-    showSaveIndicator(`✅ ${count} processos importados!`);
-    if (document.getElementById('modalConsulta').classList.contains('open')) buscarRegistros();
-  };
-  reader.readAsText(file);
-}
+    window.toggleLockEye = function() {
+        const inp = document.getElementById('lockInput');
+        const btn = document.getElementById('lockEyeBtn');
+        if (!inp) return;
+        if (inp.type === 'password') {
+            inp.type = 'text';
+            if (btn) btn.textContent = '🙈';
+        } else {
+            inp.type = 'password';
+            if (btn) btn.textContent = '👁️';
+        }
+        inp.focus();
+    };
 
-// ===================== FUNÇÕES ORIGINAIS (mantidas) =====================
-function updateBadge() {
-  const v = document.getElementById('numProc').value;
-  const badge = document.getElementById('headerBadge');
-  if (v && badge) badge.textContent = v;
-}
-
-let currentSection = 0;
-
-function goTo(idx) {
-  document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('visible', i === idx));
-  document.querySelectorAll('.prog-step').forEach((s,i) => {
-    s.classList.remove('active','done');
-    if (i === idx) s.classList.add('active');
-    else if (i < idx) s.classList.add('done');
-  });
-  currentSection = idx;
-  window.scrollTo({top: 0, behavior: 'smooth'});
-}
-
-function toggleOpt(el) {
-  const input = el.querySelector('input');
-  if (input.type === 'radio') {
-    document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => r.closest('.opt-item').classList.remove('selected'));
-  }
-  el.classList.toggle('selected', input.checked || input.type === 'radio');
-}
-
-function toggleTerceiro(show) {
-  document.getElementById('blocoTerceiro').style.display = show ? 'block' : 'none';
-}
-
-function abrirConsulta() {
-  document.getElementById('modalConsulta').classList.add('open');
-  buscarRegistros();
-}
-
-function fecharConsulta() {
-  document.getElementById('modalConsulta').classList.remove('open');
-}
-
-function buscarRegistros() {
-  if (!db) return;
-  const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const tx = db.transaction(STORE, 'readonly');
-  const req = tx.objectStore(STORE).getAll();
-  req.onsuccess = e => {
-    let all = e.target.result || [];
-    all.sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-    if (q) all = all.filter(r => 
-      (r.numProc||'').toLowerCase().includes(q) || (r.nomeEmp||'').toLowerCase().includes(q)
-    );
-    renderRecords(all);
-  };
-}
-
-function renderRecords(records) {
-  const container = document.getElementById('recordsContainer');
-  document.getElementById('recCount').textContent = records.length + ' processo(s) encontrado(s)';
-
-  if (!records.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><div>Nenhum processo encontrado.</div></div>';
-    return;
-  }
-
-  let html = '<table class="records-table"><thead><tr><th>Nº Proc.</th><th>Empregado</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead><tbody>';
-  records.forEach(r => {
-    html += `<tr>
-      <td><strong>${r.numProc || '—'}</strong></td>
-      <td>${r.nomeEmp || '—'}</td>
-      <td>${r.decisaoTipo ? 'Finalizado' : 'Em andamento'}</td>
-      <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleDateString('pt-BR') : '—'}</td>
-      <td>
-        <button class="rec-btn" onclick="carregarProcesso(${r.id});event.stopPropagation()">Abrir</button>
-        <button class="rec-btn danger" onclick="excluirProcesso(${r.id});event.stopPropagation()">Excluir</button>
-      </td>
-    </tr>`;
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
-
-function carregarProcesso(id) {
-  const tx = db.transaction(STORE, 'readonly');
-  tx.objectStore(STORE).get(id).onsuccess = e => {
-    const data = e.target.result;
-    if (data) {
-      currentId = id;
-      restoreFormData(data);
-      fecharConsulta();
-      goTo(0);
-    }
-  };
-}
-
-function excluirProcesso(id) {
-  if (confirm('Excluir este processo permanentemente?')) {
-    db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
-    buscarRegistros();
-  }
-}
-
-function restoreFormData(data) {
-  Object.keys(data).forEach(key => {
-    const el = document.getElementById(key);
-    if (el) el.value = data[key] || '';
-  });
-  updateBadge();
-}
-
-// Auto-save
-document.addEventListener('input', () => {
-  if (isRestoring) return;
-  clearTimeout(autoSaveTimer);
-  autoSaveTimer = setTimeout(() => salvarNoDB(true), 2000);
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-  await openDB();
-  const proximo = await sugerirProximoNumProc();
-  const inp = document.getElementById('numProc');
-  if (inp) inp.placeholder = proximo;
-});
+    // Foca o campo ao carregar
+    document.addEventListener('DOMContentLoaded', function() {
+        const inp = document.getElementById('lockInput');
+        if (inp) inp.focus();
+    });
+})();
 </script>
 
 </body>
