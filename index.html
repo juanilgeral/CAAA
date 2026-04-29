@@ -3414,7 +3414,7 @@
         }
 
         // Exibe dica com lista dos últimos números usados
-        var ultimos = numeros.slice(-5).reverse();
+        var ultimos = numeros.slice().sort();
         var msg = '📋 Processos existentes (últimos): ' + (ultimos.length ? ultimos.join(', ') : 'nenhum')
                 + '\n\n🔢 Próximo número sugerido: ' + proximo
                 + '\n\nDeseja preencher o campo com este número?';
