@@ -7,151 +7,169 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
-    body {
+    * {
       margin: 0;
       padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
       height: 100vh;
-      background: linear-gradient(#0a0a2a, #1a1a4a);
+      background: linear-gradient(#0a001f, #1a0033);
       color: #00ffcc;
       font-family: 'Press Start 2P', cursive;
-      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
       text-align: center;
     }
 
     .container {
-      position: relative;
-      width: 100%;
-      max-width: 900px;
+      width: 90%;
+      max-width: 920px;
+      padding: 20px;
     }
 
     h1 {
-      font-size: 3.5rem;
-      margin-bottom: 20px;
-      text-shadow: 0 0 20px #00ffcc;
-      animation: glitch 1s infinite alternate;
+      font-size: 3.8rem;
+      margin-bottom: 15px;
+      text-shadow: 
+        0 0 20px #00ffcc,
+        0 0 40px #00ffcc;
+      animation: glitch 1.5s infinite alternate;
+      letter-spacing: 4px;
     }
 
     .subtitle {
-      font-size: 1.4rem;
-      margin-bottom: 60px;
-      opacity: 0.9;
+      font-size: 1.35rem;
+      margin-bottom: 40px;
+      color: #00ffaa;
     }
 
     .scene {
       position: relative;
-      height: 400px;
-      background: #000814;
-      border: 8px solid #00ffcc;
-      border-radius: 15px;
+      height: 420px;
+      background: #000011;
+      border: 10px solid #00ffcc;
+      border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 0 40px #00ffcc;
+      box-shadow: 
+        0 0 60px #00ffcc,
+        inset 0 0 40px rgba(0, 255, 204, 0.2);
+      margin: 0 auto;
     }
 
     .computer {
       position: absolute;
       left: 50%;
-      top: 50%;
+      top: 45%;
       transform: translate(-50%, -50%);
-      width: 280px;
-      height: 200px;
-      background: #222;
-      border: 12px solid #444;
-      border-radius: 10px;
-      box-shadow: 0 0 30px #ff00aa;
+      width: 300px;
+      height: 210px;
+      background: #1a1a1a;
+      border: 14px solid #333;
+      border-radius: 12px;
+      box-shadow: 0 0 35px #ff00aa;
     }
 
     .screen {
       position: absolute;
-      top: 20px;
-      left: 20px;
-      right: 20px;
-      height: 100px;
+      top: 25px;
+      left: 25px;
+      right: 25px;
+      height: 110px;
       background: #001122;
-      border: 4px solid #00ffcc;
-      overflow: hidden;
+      border: 5px solid #00ff88;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .screen::after {
-      content: "ERROR 404";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+    .error {
       color: #ff0066;
-      font-size: 1.1rem;
-      animation: blink 0.8s infinite;
+      font-size: 1.4rem;
+      text-shadow: 0 0 15px #ff0066;
+      animation: blink 0.7s infinite;
     }
 
     .worker {
       position: absolute;
-      font-size: 4rem;
-      animation: work 3s infinite ease-in-out;
-      filter: drop-shadow(0 0 10px #ffff00);
+      font-size: 4.8rem;
+      animation: work 2.8s infinite ease-in-out;
+      filter: drop-shadow(0 0 12px #ffff00);
     }
 
     .worker1 {
-      left: 25%;
-      top: 60%;
+      left: 22%;
+      top: 58%;
       animation-delay: 0s;
     }
 
     .worker2 {
-      right: 25%;
-      top: 55%;
-      animation-delay: 1.2s;
+      right: 22%;
+      top: 52%;
+      animation-delay: 1.1s;
       transform: scaleX(-1);
     }
 
     .tool {
       position: absolute;
-      font-size: 2rem;
-      animation: toolMove 1.5s infinite alternate;
+      font-size: 2.4rem;
+      animation: toolMove 1.4s infinite alternate ease-in-out;
     }
 
     .hammer {
-      left: 32%;
+      left: 30%;
       top: 65%;
-      animation-delay: 0.3s;
     }
 
     .wrench {
-      right: 32%;
-      top: 62%;
-      animation-delay: 1.5s;
+      right: 30%;
+      top: 60%;
+      animation-delay: 0.7s;
     }
 
-    .message {
-      margin-top: 40px;
+    .contact {
+      margin-top: 35px;
       font-size: 1.1rem;
-      line-height: 1.8;
-      text-shadow: 0 0 10px #00ffcc;
+      line-height: 1.6;
+      color: #aaffff;
     }
 
+    .contact a {
+      color: #00ffcc;
+      text-decoration: none;
+      transition: all 0.3s;
+    }
+
+    .contact a:hover {
+      color: #ffff00;
+      text-shadow: 0 0 15px #ffff00;
+    }
+
+    /* Animações */
     @keyframes glitch {
       0% { transform: translate(0); }
-      20% { transform: translate(-3px, 3px); }
-      40% { transform: translate(3px, -3px); }
+      20% { transform: translate(-4px, 4px); }
+      40% { transform: translate(4px, -4px); }
       60% { transform: translate(-2px, 2px); }
-      80% { transform: translate(2px, -2px); }
       100% { transform: translate(0); }
     }
 
     @keyframes blink {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
+      50% { opacity: 0.4; }
     }
 
     @keyframes work {
       0%, 100% { transform: translateY(0) rotate(0deg); }
-      50% { transform: translateY(-20px) rotate(15deg); }
+      50% { transform: translateY(-25px) rotate(18deg); }
     }
 
     @keyframes toolMove {
-      from { transform: rotate(-30deg) translateY(0); }
-      to { transform: rotate(30deg) translateY(-15px); }
+      from { transform: rotate(-35deg) translateY(0); }
+      to { transform: rotate(35deg) translateY(-18px); }
     }
 
     .sparks {
@@ -163,12 +181,19 @@
 
     .spark {
       position: absolute;
-      width: 6px;
-      height: 6px;
+      width: 8px;
+      height: 8px;
       background: #ffff00;
       border-radius: 50%;
-      box-shadow: 0 0 12px #ffff00;
-      animation: sparkAnim 1.2s infinite;
+      box-shadow: 0 0 15px #ffff00;
+      animation: sparkAnim 0.9s linear forwards;
+    }
+
+    @keyframes sparkAnim {
+      to {
+        transform: translateY(-80px) scale(0.2);
+        opacity: 0;
+      }
     }
   </style>
 </head>
@@ -180,7 +205,9 @@
     <div class="scene">
       <!-- Computador -->
       <div class="computer">
-        <div class="screen"></div>
+        <div class="screen">
+          <div class="error">ERROR 404</div>
+        </div>
       </div>
 
       <!-- Operários -->
@@ -195,53 +222,48 @@
       <div class="sparks" id="sparks"></div>
     </div>
 
-    <div class="message">
-      <p>Os técnicos estão trabalhando duro para trazer o sistema de volta.</p>
-      <p>Por favor, volte mais tarde. Obrigado pela paciência! 🚧</p>
+    <div class="contact">
+      <p>Precisa de alguma melhoria ou urgência?</p>
+      <p>Entre em contato com o administrador do sistema:</p>
+      <p><strong>Ekland</strong> 
+        <a href="https://wa.me/5521972690650" target="_blank">
+          📱 (21) 97269-0650 
+        </a>
+      </p>
     </div>
   </div>
 
   <script>
-    // Gerar faíscas animadas
+    // Gerar faíscas
     function createSpark() {
       const spark = document.createElement('div');
       spark.classList.add('spark');
       
-      const computer = document.querySelector('.computer');
-      const rect = computer.getBoundingClientRect();
-      const scene = document.querySelector('.scene');
+      const x = Math.random() * 300 + 310;
+      spark.style.left = x + 'px';
+      spark.style.top = '220px';
       
-      spark.style.left = (Math.random() * 280 + (scene.offsetWidth/2 - 140)) + 'px';
-      spark.style.top = (Math.random() * 120 + 180) + 'px';
-      
-      const duration = Math.random() * 800 + 600;
+      const duration = Math.random() * 600 + 700;
       spark.style.animationDuration = duration + 'ms';
       
       document.getElementById('sparks').appendChild(spark);
       
-      setTimeout(() => {
-        spark.remove();
-      }, duration);
+      setTimeout(() => spark.remove(), duration);
     }
 
-    // Criar faíscas continuamente
+    // Faíscas contínuas
     setInterval(() => {
-      if (Math.random() > 0.4) {
-        createSpark();
-      }
-    }, 80);
+      if (Math.random() > 0.35) createSpark();
+    }, 70);
 
-    // Mensagem piscando ocasionalmente
+    // Efeito extra no título
     setInterval(() => {
-      const messages = document.querySelectorAll('.message p');
-      messages.forEach(msg => {
-        msg.style.transition = 'opacity 0.3s';
-        msg.style.opacity = '0.4';
-        setTimeout(() => {
-          msg.style.opacity = '1';
-        }, 200);
-      });
-    }, 4000);
+      const title = document.querySelector('h1');
+      title.style.animation = 'none';
+      setTimeout(() => {
+        title.style.animation = 'glitch 1.5s infinite alternate';
+      }, 10);
+    }, 5000);
   </script>
 </body>
 </html>
