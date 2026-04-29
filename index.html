@@ -4,34 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Procedimento Administrativo de Apuração de Sinistro – CAAA</title>
+<style id="printOverrideStyle"></style>
 <style>
-  /* CSS Original mantido (resumido para caber) */
-  body { font-family: 'IBM Plex Sans', sans-serif; background: #e8e2d8; }
-  .paper { max-width: 920px; margin: 0 auto; background: #f5f0e8; border: 1px solid #c4bdb0; box-shadow: 0 4px 24px rgba(13,27,42,0.13); }
-  .doc-header { background: #0d1b2a; color: white; padding: 36px 48px; }
-  .section { display: none; }
-  .section.visible { display: block; }
-  .lock-card { background: #f5f0e8; padding: 48px; border: 1px solid #c4bdb0; text-align: center; }
+  /* LOCK SCREEN */
+  #lockScreen {
+    position: fixed; inset: 0; z-index: 99999; background: #0d1b2a;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  #lockScreen.unlocked { animation: lockFadeOut 0.55s ease forwards; pointer-events: none; }
+  @keyframes lockFadeOut { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+  .lock-card {
+    background: #f5f0e8; border: 1px solid #c4bdb0; border-top: 4px solid #c9a84c;
+    border-radius: 4px; padding: 48px 52px 44px; max-width: 400px; text-align: center;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.45);
+  }
+  .lock-logo { font-size: 38px; margin-bottom: 10px; }
+  .lock-title { font-family: 'EB Garamond', serif; font-size: 22px; font-weight: 600; }
+  .lock-input { width: 100%; padding: 12px; font-size: 15px; margin-bottom: 15px; }
+  .lock-btn { width: 100%; padding: 13px; background: #0d1b2a; color: white; border: none; cursor: pointer; }
+
+  :root {
+    --navy: #0d1b2a; --gold: #c9a84c; --cream: #f5f0e8; --border: #c4bdb0;
+  }
+  body { background: #e8e2d8; font-family: 'IBM Plex Sans', sans-serif; padding: 20px; }
+  .paper { max-width: 920px; margin: 0 auto; background: var(--cream); border: 1px solid var(--border); box-shadow: 0 4px 24px rgba(13,27,42,0.13); }
+  .doc-header { background: var(--navy); color: white; padding: 30px; text-align: center; }
 </style>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&family=IBM+Plex+Sans&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
 </head>
 <body>
 
 <!-- LOCK SCREEN -->
-<div id="lockScreen" style="position:fixed;inset:0;background:#0d1b2a;display:flex;align-items:center;justify-content:center;z-index:99999;">
+<div id="lockScreen">
   <div class="lock-card">
-    <div style="font-size:38px;margin-bottom:10px;">🔐</div>
-    <div style="font-size:22px;font-weight:600;">CAAA — Acesso Restrito</div>
-    <div style="margin:10px 0 30px;color:#6b6b8a;">Procedimento Administrativo de Apuração de Sinistro</div>
-    <label style="display:block;font-size:11px;margin-bottom:8px;">Senha de acesso</label>
-    <input type="password" id="lockInput" style="width:100%;padding:12px;font-size:15px;margin-bottom:15px;" placeholder="Digite a senha" onkeydown="if(event.key==='Enter') tentarSenha()">
-    <button onclick="tentarSenha()" style="width:100%;padding:13px;background:#0d1b2a;color:white;border:none;cursor:pointer;">🔓 Entrar</button>
-    <div id="lockError" style="color:#b03030;margin-top:10px;min-height:20px;"></div>
+    <div class="lock-logo">🔐</div>
+    <div class="lock-title">CAAA — Acesso Restrito</div>
+    <div class="lock-sub">Procedimento Administrativo de Apuração de Sinistro</div>
+    <label class="lock-label">Senha de acesso</label>
+    <input class="lock-input" type="password" id="lockInput" placeholder="Digite a senha" onkeydown="if(event.key==='Enter') tentarSenha()">
+    <button class="lock-btn" onclick="tentarSenha()">🔓 Entrar</button>
+    <div id="lockError" style="color:#b03030;margin-top:10px;"></div>
   </div>
 </div>
 
 <!-- DB BAR -->
-<div style="max-width:920px;margin:0 auto 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px;">
+<div class="db-bar" style="max-width:920px;margin:0 auto 15px;display:flex;gap:8px;flex-wrap:wrap;">
   <button onclick="abrirConsulta()" style="padding:8px 16px;background:#0d1b2a;color:white;border:none;cursor:pointer;">🔍 Consultar Processos</button>
   <button onclick="novoProcesso()" style="padding:8px 16px;background:white;border:1px solid #c4bdb0;cursor:pointer;">➕ Novo Processo</button>
   <button onclick="exportarBackup()" style="padding:8px 16px;background:white;border:1px solid #c4bdb0;cursor:pointer;">⬇️ Exportar Backup</button>
@@ -40,36 +59,54 @@
 </div>
 
 <!-- MODAL CONSULTA -->
-<div id="modalConsulta" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:white;width:90%;max-width:900px;border-radius:8px;overflow:hidden;">
-    <div style="background:#0d1b2a;color:white;padding:15px;display:flex;justify-content:space-between;">
+<div id="modalConsulta" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:white;width:90%;max-width:900px;border-radius:8px;max-height:90vh;overflow:auto;">
+    <div style="padding:15px;background:#0d1b2a;color:white;display:flex;justify-content:space-between;">
       <strong>Consulta de Processos — CAAA</strong>
-      <span onclick="fecharConsulta()" style="cursor:pointer;font-size:20px;">×</span>
+      <span onclick="fecharConsulta()" style="cursor:pointer;font-size:24px;">×</span>
     </div>
     <div style="padding:20px;">
-      <input type="text" id="searchInput" placeholder="Buscar..." style="width:100%;padding:10px;margin-bottom:10px;" onkeyup="buscarRegistros()">
-      <div id="recCount"></div>
+      <input type="text" id="searchInput" placeholder="Buscar por nome ou número..." style="width:100%;padding:10px;margin-bottom:15px;" onkeyup="if(event.key==='Enter') buscarRegistros()">
+      <div id="recCount" style="margin-bottom:10px;"></div>
       <div id="recordsContainer"></div>
     </div>
   </div>
 </div>
 
-<!-- MAIN PAPER -->
-<div class="paper" style="padding:20px;">
-  <div style="background:#0d1b2a;color:white;padding:30px;text-align:center;">
-    <h1 style="margin:0;">Procedimento Administrativo de Apuração de Sinistro</h1>
-    <p>CAAA - Comissão de Apuração de Acidentes e Avarias</p>
+<!-- SAVE INDICATOR -->
+<div id="saveIndicator" style="position:fixed;bottom:20px;right:20px;background:#0d1b2a;color:white;padding:10px 20px;border-radius:4px;display:none;z-index:2000;">
+  ✓ Salvo automaticamente
+</div>
+<!-- ===================== MAIN PAPER ===================== -->
+<div class="paper" id="mainPaper">
+  <div class="doc-header">
+    <span style="font-size:11px;letter-spacing:2px;">Formulário Oficial · CAAA</span>
+    <h1 style="font-size:28px;margin:10px 0;">Procedimento Administrativo de Apuração de Sinistro</h1>
+    <p style="opacity:0.8;">Comissão de Apuração de Acidentes e Avarias</p>
   </div>
 
-  <div style="padding:30px;">
-    <h2>1. Identificação</h2>
-    <label>Nº do Procedimento</label>
-    <input type="text" id="numProc" style="width:100%;padding:10px;font-size:16px;" placeholder="CAAA-0001/2026">
+  <div style="padding:40px 48px;">
+    <!-- Seção 1 - Identificação -->
+    <div class="section visible" id="sec0">
+      <h2>1. Identificação do Procedimento</h2>
+      <div style="margin:20px 0;">
+        <label>Nº do Procedimento</label>
+        <input type="text" id="numProc" style="width:100%;padding:12px;font-size:16px;border:2px dashed #c9a84c;" placeholder="CAAA-0001/2026" oninput="updateBadge()">
+      </div>
+    </div>
   </div>
 </div>
 
+<!-- ===================== STYLES ADICIONAIS ===================== -->
+<style>
+  .section { display: none; }
+  .section.visible { display: block; }
+  .paper { max-width: 920px; margin: 20px auto; background: white; border: 1px solid #ddd; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+</style>
 <script>
-// ===================== GROK CAAA - VERSÃO FINAL =====================
+// ============================================================
+// GROK CAAA - VERSÃO FINAL SIMPLIFICADA E FUNCIONAL
+// ============================================================
 const DB_NAME = 'CAAA_DB';
 const DB_VERSION = 5;
 const STORE = 'processos';
@@ -77,7 +114,7 @@ let db = null;
 let currentId = null;
 
 function openDB() {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = e => {
       const d = e.target.result;
@@ -85,55 +122,85 @@ function openDB() {
       d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
     };
     req.onsuccess = e => { db = e.target.result; resolve(); };
+    req.onerror = () => reject();
   });
 }
 
+// Login
 const SENHA_CORRETA = "@admin0768#";
 
 window.tentarSenha = function() {
   const inp = document.getElementById('lockInput');
   if (inp.value === SENHA_CORRETA) {
     document.getElementById('lockScreen').style.display = 'none';
-    sessionStorage.setItem('caaa_logged_in', 'true');
   } else {
-    alert("Senha incorreta. Use: @admin0768#");
+    alert("Senha incorreta!\n\nSenha correta: @admin0768#");
     inp.value = '';
   }
 };
 
+// Novo Processo com numeração automática
 async function novoProcesso() {
   const proximo = await sugerirProximoNumProc();
   document.getElementById('numProc').value = proximo;
-  alert(`Novo processo criado: ${proximo}`);
+  alert(`Novo processo criado:\n\n${proximo}`);
 }
 
 async function sugerirProximoNumProc() {
   if (!db) return `CAAA-0001/${new Date().getFullYear()}`;
   const tx = db.transaction(STORE, 'readonly');
-  const records = await new Promise(r => {
-    tx.objectStore(STORE).getAll().onsuccess = e => r(e.target.result);
-  });
+  const records = await new Promise(r => tx.objectStore(STORE).getAll().onsuccess = e => r(e.target.result));
   const ano = new Date().getFullYear();
   const numeros = records.map(r => r.numProc)
-    .filter(n => n && n.startsWith('CAAA-') && n.endsWith(`/${ano}`))
+    .filter(n => n && n.match(/^CAAA-\d{4}\/\d{4}$/))
     .map(n => parseInt(n.match(/CAAA-(\d{4})/)[1]));
   const proximo = numeros.length ? Math.max(...numeros) + 1 : 1;
   return `CAAA-${proximo.toString().padStart(4, '0')}/${ano}`;
 }
 
-function exportarBackup() {
-  alert("Exportação simulada - Em produção salvaria os dados.");
+// Exportar / Importar
+async function exportarBackup() {
+  if (!db) return alert("Banco não pronto.");
+  const tx = db.transaction(STORE, 'readonly');
+  const records = await new Promise(r => tx.objectStore(STORE).getAll().onsuccess = e => r(e.target.result));
+  const payload = { exportedAt: new Date().toISOString(), records };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `CAAA_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  alert(`Backup exportado com ${records.length} processos`);
 }
 
-function importarBackup() {
-  alert("Importação simulada - Em produção carregaria o arquivo.");
+function importarBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      const records = payload.records || [];
+      for (const rec of records) {
+        const novo = {...rec};
+        delete novo.id;
+        await new Promise(res => db.transaction(STORE, 'readwrite').objectStore(STORE).add(novo).onsuccess = res);
+      }
+      alert(`${records.length} processos importados com sucesso!`);
+    } catch(err) {
+      alert("Erro ao importar arquivo.");
+    }
+  };
+  reader.readAsText(file);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  openDB();
-  if (sessionStorage.getItem('caaa_logged_in') !== 'true') {
-    document.getElementById('lockScreen').style.display = 'flex';
-  }
+// Inicialização
+document.addEventListener('DOMContentLoaded', async () => {
+  await openDB();
+  const proximo = await sugerirProximoNumProc();
+  const inp = document.getElementById('numProc');
+  if (inp) inp.placeholder = proximo;
 });
 </script>
 
