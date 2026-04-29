@@ -2955,28 +2955,32 @@
     return new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onupgradeneeded = e => {
-        const d = e.target.result;
-        // Cria o objectStore se não existir (v1 → v2: sem mudança de schema)
+        const d   = e.target.result;
+        const tx  = e.target.transaction;
+        let store;
+
+        // Cria o objectStore se não existir (instalação limpa ou v1 → v2)
         if (!d.objectStoreNames.contains(STORE)) {
-          const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-          store.createIndex('numProc',    'numProc',    { unique: false });
-          store.createIndex('nomeEmp',    'nomeEmp',    { unique: false });
-          store.createIndex('placaBem',   'placaBem',   { unique: false });
-          store.createIndex('updatedAt',  'updatedAt',  { unique: false });
+          store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+          store.createIndex('numProc',     'numProc',     { unique: false });
+          store.createIndex('nomeEmp',     'nomeEmp',     { unique: false });
+          store.createIndex('placaBem',    'placaBem',    { unique: false });
+          store.createIndex('updatedAt',   'updatedAt',   { unique: false });
+        } else {
+          // Store já existe (upgrade de versão): obtém referência via transação
+          store = tx.objectStore(STORE);
         }
-        // v2: garante índice nomeTerceiro para busca
-        const tx = e.target.transaction;
-        if (tx) {
-          try {
-            const st = tx.objectStore(STORE);
-            if (!st.indexNames.contains('nomeTerceiro')) {
-              st.createIndex('nomeTerceiro', 'nomeTerceiro', { unique: false });
-            }
-          } catch(ex) { /* índice já existe */ }
-        }
+
+        // v2: garante índice nomeTerceiro para busca (idempotente)
+        try {
+          if (!store.indexNames.contains('nomeTerceiro')) {
+            store.createIndex('nomeTerceiro', 'nomeTerceiro', { unique: false });
+          }
+        } catch(ex) { /* índice já existe — ignora */ }
       };
       req.onsuccess = e => { db = e.target.result; resolve(db); };
-      req.onerror = e => reject(e);
+      req.onerror   = e => reject(e.target.error || e);
+      req.onblocked = ()  => reject(new Error('IndexedDB bloqueado — feche outras abas com esta página e recarregue.'));
     });
   }
 
