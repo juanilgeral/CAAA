@@ -3006,13 +3006,6 @@
     data.status = data.decisaoLabel ? 'finalizado' : 'em-andamento';
     data.updatedAt = new Date().toISOString();
     data.numProc = document.getElementById('numProc').value || '';
-    // Salva status de cada parcela na tabela
-    const parcelasStatus = [];
-    document.querySelectorAll('#parcelasBody tr').forEach(function(tr) {
-      const sel = tr.querySelector('select');
-      parcelasStatus.push(sel ? sel.value : '—');
-    });
-    data._parcelasStatus = parcelasStatus;
     data.nomeEmp = document.getElementById('nomeEmp').value || '';
     data.placaBem = document.getElementById('placaBem').value || '';
     data.placaTerceiro = document.getElementById('placaTerceiro') ? document.getElementById('placaTerceiro').value || '' : '';
@@ -3094,108 +3087,6 @@
     if (rem) document.getElementById('limiteDesc').value = (rem * 0.4).toFixed(2);
     // Re-sync all standalone forms after restore
     setTimeout(() => syncAllFromSection1(), 200);
-    // Recalcula a tabela de parcelas automaticamente com os valores restaurados
-    setTimeout(function() {
-      calcParcelas();
-      // Após gerar a tabela, restaura o status de cada parcela
-      if (Array.isArray(data._parcelasStatus) && data._parcelasStatus.length) {
-        setTimeout(function() {
-          const rows = document.querySelectorAll('#parcelasBody tr');
-          data._parcelasStatus.forEach(function(val, i) {
-            if (rows[i]) {
-              const sel = rows[i].querySelector('select');
-              if (sel && val) sel.value = val;
-            }
-          });
-        }, 150);
-      }
-    }, 300);
-    // Restaura registros por extenso de todas as opções marcadas (radio/checkbox)
-    setTimeout(function() {
-      document.querySelectorAll('.options-grid').forEach(function(grid) {
-        const sel = [...grid.querySelectorAll('.opt-item.selected')];
-        if (!sel.length) return;
-        // Garante que o grid tem um rid
-        let rid = grid.dataset.rid;
-        if (!rid) {
-          rid = 'reg_restore_' + Date.now() + '_' + Math.floor(Math.random()*9999);
-          grid.dataset.rid = rid;
-        }
-        // Busca label do campo pai
-        let titulo = '';
-        const parent = grid.closest('.field-group') || grid.closest('.field-row') || grid.parentElement;
-        if (parent) {
-          const lb = parent.querySelector(':scope > label') || parent.querySelector('label');
-          if (lb) titulo = lb.firstChild ? lb.firstChild.textContent.replace(/[*]/g,'').trim() : '';
-        }
-        // Monta o texto dos itens selecionados
-        const selTexts = sel.map(function(item) {
-          const lbEl = item.querySelector('.opt-label');
-          const subEl = item.querySelector('.opt-sub');
-          let txt = lbEl ? lbEl.textContent.trim() : item.textContent.trim();
-          if (subEl && subEl.textContent.trim()) txt += ' · ' + subEl.textContent.trim();
-          return txt;
-        });
-        // Cria ou atualiza div de registro
-        let regDiv = document.getElementById(rid);
-        if (!regDiv) {
-          regDiv = document.createElement('div');
-          regDiv.id = rid;
-          regDiv.style.cssText = 'margin:6px 0 14px;padding:8px 14px;background:rgba(13,27,42,0.05);border-left:3px solid var(--gold);border-radius:3px;font-size:12.5px;color:var(--navy);font-weight:500;line-height:1.6;';
-          grid.insertAdjacentElement('afterend', regDiv);
-        }
-        regDiv.style.display = 'block';
-        regDiv.innerHTML = '✔️ ' + (titulo ? '<strong>' + titulo + ':</strong> ' : '') + selTexts.join(' &nbsp;│&nbsp; ');
-      });
-      // Restaura labels de voto dos pareceres individuais (formParecer)
-      ['p1','p2','p3','p4'].forEach(function(p) {
-        const hiddenEl = document.getElementById(p + 'voto');
-        if (!hiddenEl || !hiddenEl.value) return;
-        const val = hiddenEl.value;
-        const textoEl = document.getElementById(p + 'votoTexto');
-        if (textoEl && VOTO_LABELS[val]) {
-          textoEl.textContent = VOTO_LABELS[val];
-          textoEl.style.display = 'block';
-        }
-        // Marca visualmente o voto-opt correto
-        const body = hiddenEl.closest('.parecer-member-body');
-        if (body) {
-          const map = {'sem_culpa':'Sem Culpa','culpa':'Culpa','dolo':'Dolo'};
-          body.querySelectorAll('.voto-opt').forEach(function(opt) {
-            opt.classList.toggle('voto-selected', opt.textContent.includes(map[val] || ''));
-          });
-        }
-      });
-      // Restaura labels de voto das Decisões Individuais (formDecisaoIndividual)
-      ['di1','di2','di3','di4'].forEach(function(p) {
-        const hiddenEl = document.getElementById(p + '_voto');
-        if (!hiddenEl || !hiddenEl.value) return;
-        const val = hiddenEl.value;
-        const textoEl = document.getElementById(p + '_votoTexto');
-        if (textoEl && DI_VOTO_LABELS && DI_VOTO_LABELS[val]) {
-          textoEl.textContent = DI_VOTO_LABELS[val];
-          textoEl.style.display = 'block';
-        }
-        // Marca o card selecionado
-        const block = hiddenEl.closest('.comunicacao-block');
-        if (block) {
-          block.querySelectorAll('.decision-card').forEach(function(c) {
-            const title = c.querySelector('.dc-title');
-            const mapCard = {'sem_culpa':'Sem Culpa','culpa':'Culpa','dolo':'Dolo'};
-            c.classList.toggle('selected-card', title && title.textContent.includes(mapCard[val] || ''));
-          });
-        }
-      });
-      // Restaura texto da decisão coletiva (sec4)
-      const decisaoTipoEl = document.getElementById('decisaoTipo');
-      if (decisaoTipoEl && decisaoTipoEl.value) {
-        const textoEl = document.getElementById('decisaoTexto');
-        if (textoEl && DECISAO_LABELS[decisaoTipoEl.value]) {
-          textoEl.textContent = DECISAO_LABELS[decisaoTipoEl.value];
-          textoEl.style.display = 'block';
-        }
-      }
-    }, 400);
   }
 
   // ---- Coleta registros por extenso de todas as selecoes visiveis ----
@@ -3352,11 +3243,6 @@
     document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
     document.querySelectorAll('.voto-opt').forEach(el => el.classList.remove('voto-selected'));
     document.getElementById('blocoTerceiro').style.display = 'none';
-    // Limpa a tabela de parcelas ao iniciar novo processo
-    var parcelasBody = document.getElementById('parcelasBody');
-    if (parcelasBody) parcelasBody.innerHTML = '';
-    var tabelaParcelas = document.getElementById('tabelaParcelas');
-    if (tabelaParcelas) tabelaParcelas.style.display = 'none';
     document.getElementById('headerBadge').textContent = 'CAAA-FORM v1.0';
     document.getElementById('dbStatus').textContent = '';
     goTo(0);
@@ -4231,37 +4117,6 @@
     openPrintWindow(content, 'CAAA · Decisão Individual — Todos os Membros');
   }
 
-
-  // ── Sync Membros → Pareceres Individuais ───────────────────────────────────
-  // Quando o digitador preenche nome/cargo na Seção 3 (Constituição CAAA),
-  // os campos correspondentes nos Pareceres Individuais são preenchidos automaticamente.
-  (function() {
-    var MAP = [
-      { src: 'm1nome', dst: 'p1nome' },
-      { src: 'm1cargo', dst: 'p1cargo' },
-      { src: 'm2nome', dst: 'p2nome' },
-      { src: 'm2cargo', dst: 'p2cargo' },
-      { src: 'm3nome', dst: 'p3nome' },
-      { src: 'm3cargo', dst: 'p3cargo' },
-      { src: 'm4nome', dst: 'p4nome' },
-      { src: 'm4cargo', dst: 'p4cargo' },
-    ];
-    MAP.forEach(function(pair) {
-      var srcEl = document.getElementById(pair.src);
-      var dstEl = document.getElementById(pair.dst);
-      if (!srcEl || !dstEl) return;
-      srcEl.addEventListener('input', function() {
-        // Só preenche o destino se estiver vazio ou igual ao valor anterior do source
-        // (não sobrescreve se o membro já editou o parecer manualmente)
-        if (!dstEl.value || dstEl.value === srcEl.dataset.lastSync) {
-          dstEl.value = srcEl.value;
-          dstEl.classList.add('sync-flash');
-          setTimeout(function(){ dstEl.classList.remove('sync-flash'); }, 1200);
-        }
-        srcEl.dataset.lastSync = srcEl.value;
-      });
-    });
-  })();
 
   // Checkbox toggle
   document.querySelectorAll('.opt-item input').forEach(function(input) {
