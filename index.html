@@ -123,7 +123,7 @@
 
 <script>
 // ============================================================
-// GROK CAAA v2.1 - Versão Reescrita e Otimizada
+// GROK CAAA v2.2 - Versão Melhorada com Restore Completo
 // ============================================================
 const DB_NAME = 'CAAA_DB';
 const DB_VERSION = 5;
@@ -153,6 +153,13 @@ function collectFormData() {
   document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
     data[el.id] = el.value;
   });
+
+  // Radios e Checkboxes
+  document.querySelectorAll('input[type="radio"]:checked, input[type="checkbox"]:checked').forEach(el => {
+    data[el.name || el.id] = el.value || 'checked';
+  });
+
+  data.decisaoTipo = document.getElementById('decisaoTipo')?.value || '';
   data.updatedAt = new Date().toISOString();
   return data;
 }
@@ -199,6 +206,7 @@ function showSaveIndicator(msg) {
   setTimeout(() => ind.classList.remove('show'), 2500);
 }
 
+// Novo Processo
 async function novoProcesso() {
   if (currentId) await salvarNoDB();
   if (!confirm('Iniciar novo processo?')) return;
@@ -209,6 +217,8 @@ async function novoProcesso() {
   document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
     if (el.type !== 'hidden') el.value = '';
   });
+  document.querySelectorAll('.opt-item').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
 
   const proximo = await sugerirProximoNumProc();
   document.getElementById('numProc').value = proximo;
@@ -219,6 +229,7 @@ async function novoProcesso() {
   setTimeout(() => isRestoring = false, 400);
 }
 
+// Exportar
 async function exportarBackup() {
   if (!db) return alert('Banco não está pronto.');
   const tx = db.transaction(STORE, 'readonly');
@@ -237,6 +248,7 @@ async function exportarBackup() {
   };
 }
 
+// Importar
 function importarBackup(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -246,7 +258,7 @@ function importarBackup(event) {
   reader.onload = async (e) => {
     let payload;
     try { payload = JSON.parse(e.target.result); } catch {
-      alert('Arquivo inválido.');
+      alert('Arquivo JSON inválido.');
       return;
     }
 
@@ -268,10 +280,32 @@ function importarBackup(event) {
         db.transaction(STORE, 'readwrite').objectStore(STORE).add(novo).onsuccess = () => { count++; res(); };
       });
     }
-    showSaveIndicator(`✅ ${count} processos importados com sucesso!`);
+    showSaveIndicator(`✅ ${count} processos importados!`);
     if (document.getElementById('modalConsulta').classList.contains('open')) buscarRegistros();
   };
   reader.readAsText(file);
+}
+
+// ===================== RESTORE MELHORADO =====================
+function restoreFormData(data) {
+  isRestoring = true;
+
+  // Preenche campos normais
+  Object.keys(data).forEach(key => {
+    const el = document.getElementById(key);
+    if (el) el.value = data[key] || '';
+  });
+
+  // Restaura radios e checkboxes
+  document.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(el => {
+    if (data[el.name] === el.value || data[el.id] === 'checked') {
+      el.checked = true;
+      if (el.closest('.opt-item')) el.closest('.opt-item').classList.add('selected');
+    }
+  });
+
+  updateBadge();
+  isRestoring = false;
 }
 
 // Funções básicas
@@ -309,7 +343,9 @@ function buscarRegistros() {
   req.onsuccess = e => {
     let all = e.target.result || [];
     all.sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-    if (q) all = all.filter(r => (r.numProc||'').toLowerCase().includes(q) || (r.nomeEmp||'').toLowerCase().includes(q));
+    if (q) all = all.filter(r => 
+      (r.numProc||'').toLowerCase().includes(q) || (r.nomeEmp||'').toLowerCase().includes(q)
+    );
     renderRecords(all);
   };
 }
@@ -325,11 +361,11 @@ function renderRecords(records) {
 
   let html = '<table class="records-table"><thead><tr><th>Nº Proc.</th><th>Empregado</th><th>Status</th><th>Ações</th></tr></thead><tbody>';
   records.forEach(r => {
-    html += `<tr>
+    html += `<tr onclick="carregarProcesso(${r.id});">
       <td>${r.numProc || '—'}</td>
       <td>${r.nomeEmp || '—'}</td>
       <td>${r.decisaoTipo ? 'Finalizado' : 'Em andamento'}</td>
-      <td><button onclick="carregarProcesso(${r.id});event.stopPropagation()">Abrir</button></td>
+      <td><button onclick="event.stopPropagation();carregarProcesso(${r.id})">Abrir</button></td>
     </tr>`;
   });
   html += '</tbody></table>';
@@ -348,40 +384,14 @@ function carregarProcesso(id) {
   };
 }
 
-function restoreFormData(data) {
-  Object.keys(data).forEach(key => {
-    const el = document.getElementById(key);
-    if (el) el.value = data[key] || '';
-  });
-  updateBadge();
-}
+// Auto-save
+document.addEventListener('input', () => {
+  if (isRestoring) return;
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => salvarNoDB(), 1500);
+});
 
-// Login simplificado
-const SENHA_CORRETA = "@admin0768#";
-
-window.tentarSenha = function() {
-  const inp = document.getElementById('lockInput');
-  const err = document.getElementById('lockError');
-  if (inp.value === SENHA_CORRETA) {
-    sessionStorage.setItem('caaa_auth', '1');
-    document.getElementById('lockScreen').style.display = 'none';
-  } else {
-    err.textContent = 'Senha incorreta';
-    inp.value = '';
-    setTimeout(() => err.textContent = '', 2500);
-  }
-};
-
-window.toggleLockEye = function() {
-  const inp = document.getElementById('lockInput');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-};
-
-// Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
-  if (sessionStorage.getItem('caaa_auth') !== '1') {
-    document.getElementById('lockScreen').style.display = 'flex';
-  }
   await openDB();
   const proximo = await sugerirProximoNumProc();
   document.getElementById('numProc').placeholder = proximo;
