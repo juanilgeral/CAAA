@@ -2941,10 +2941,10 @@
 
 <script>
 // ============================================================
-// CAAA - SISTEMA CORRIGIDO - VERSÃO ESTÁVEL
+// CAAA - SISTEMA CORRIGIDO (Versão Estável - 28/04/2026)
 // ============================================================
 const DB_NAME = 'CAAA_DB';
-const DB_VERSION = 4;   // Aumentado para forçar reset limpo
+const DB_VERSION = 4;   // Versão aumentada para resetar estrutura antiga
 const STORE = 'processos';
 let db = null;
 let currentId = null;
@@ -2954,38 +2954,31 @@ let isRestoring = false;
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    
     req.onupgradeneeded = (e) => {
       const d = e.target.result;
-      if (d.objectStoreNames.contains(STORE)) {
-        d.deleteObjectStore(STORE); // Limpa estrutura antiga se necessário
-      }
+      if (d.objectStoreNames.contains(STORE)) d.deleteObjectStore(STORE);
       const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
       store.createIndex('numProc', 'numProc', { unique: false });
       store.createIndex('nomeEmp', 'nomeEmp', { unique: false });
       store.createIndex('updatedAt', 'updatedAt', { unique: false });
     };
-
     req.onsuccess = (e) => { 
       db = e.target.result; 
-      console.log('✅ Banco de dados aberto com sucesso');
+      console.log('✅ Banco IndexedDB aberto com sucesso (v' + DB_VERSION + ')');
       resolve(db); 
     };
-
     req.onerror = (e) => {
-      console.error('Erro ao abrir IndexedDB:', e);
-      document.getElementById('dbStatus').textContent = '⚠ Erro ao abrir banco';
+      console.error('Erro IndexedDB:', e);
+      document.getElementById('dbStatus').innerHTML = '⚠ Erro ao abrir banco';
       reject(e);
     };
   });
 }
 
-// Coleta dados
+// Coleta dados do formulário
 function collectFormData() {
   const data = {};
-  document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
-    data[el.id] = el.value;
-  });
+  document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => data[el.id] = el.value);
 
   const radioNames = ['comunicou','instaurar','formaNotif','compareceu','modalDefesa','falhaManu','solicitouPrazo','gravada','penalidade','haDesconto','haTerceiro'];
   radioNames.forEach(name => {
@@ -3002,7 +2995,7 @@ function collectFormData() {
   return data;
 }
 
-// Próximo número automático
+// Sugere próximo número
 async function sugerirProximoNumProc() {
   if (!db) return `CAAA-0001/${new Date().getFullYear()}`;
 
@@ -3012,13 +3005,13 @@ async function sugerirProximoNumProc() {
     req.onsuccess = () => {
       const records = req.result || [];
       const ano = new Date().getFullYear();
-      const nums = records
+      const numeros = records
         .map(r => r.numProc)
-        .filter(n => n && n.startsWith('CAAA-') && n.endsWith(`/${ano}`))
-        .map(n => parseInt(n.match(/CAAA-(\d{4})/)?.[1]) || 0)
-        .filter(n => n > 0);
+        .filter(n => n && n.match(/^CAAA-\d{4}\/\d{4}$/))
+        .map(n => parseInt(n.match(/CAAA-(\d{4})/)[1], 10))
+        .filter(n => !isNaN(n));
 
-      const proximo = nums.length ? Math.max(...nums) + 1 : 1;
+      const proximo = numeros.length ? Math.max(...numeros) + 1 : 1;
       resolve(`CAAA-${proximo.toString().padStart(4, '0')}/${ano}`);
     };
     req.onerror = () => resolve(`CAAA-0001/${new Date().getFullYear()}`);
@@ -3038,7 +3031,7 @@ async function salvarNoDB(showMsg = true) {
 
   req.onsuccess = () => {
     if (!currentId) currentId = req.result;
-    if (showMsg) showSaveIndicator('✓ Salvo');
+    if (showMsg) showSaveIndicator('✓ Salvo automaticamente');
     updateDbStatus();
   };
 }
@@ -3066,7 +3059,8 @@ async function novoProcesso() {
   document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
     if (el.type !== 'hidden') el.value = '';
   });
-  document.querySelectorAll('.opt-item, .decision-card, .voto-opt').forEach(el => el.classList.remove('selected', 'selected-card', 'voto-selected'));
+  document.querySelectorAll('.opt-item').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
 
   const proximo = await sugerirProximoNumProc();
   document.getElementById('numProc').value = proximo;
@@ -3075,7 +3069,7 @@ async function novoProcesso() {
   document.getElementById('blocoTerceiro').style.display = 'none';
   goTo(0);
   showSaveIndicator(`➕ Novo processo — ${proximo}`);
-  setTimeout(() => isRestoring = false, 400);
+  setTimeout(() => isRestoring = false, 500);
 }
 
 // Exportar
@@ -3085,19 +3079,19 @@ async function exportarBackup() {
   const req = tx.objectStore(STORE).getAll();
   req.onsuccess = () => {
     const records = req.result || [];
-    const payload = { exportedAt: new Date().toISOString(), records: records };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+    const payload = { exportedAt: new Date().toISOString(), records };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `CAAA_backup_${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showSaveIndicator(`Backup exportado (${records.length} processos)`);
+    showSaveIndicator(`⬇️ Backup exportado (${records.length} processos)`);
   };
 }
 
-// Importar - Versão simples e robusta
+// Importar
 function importarBackup(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -3106,23 +3100,18 @@ function importarBackup(event) {
   const reader = new FileReader();
   reader.onload = async (e) => {
     let payload;
-    try {
-      payload = JSON.parse(e.target.result);
-    } catch (err) {
-      alert('Erro: Arquivo JSON inválido.');
+    try { payload = JSON.parse(e.target.result); } catch(err) {
+      alert('Arquivo JSON inválido.');
       return;
     }
 
     const records = Array.isArray(payload.records) ? payload.records : [];
-    if (records.length === 0) {
-      alert('Nenhum processo encontrado no arquivo.');
-      return;
-    }
+    if (!records.length) return alert('Nenhum processo encontrado no arquivo.');
 
     const substituir = confirm(`Importar ${records.length} processos?\n\nOK = Adicionar\nCancelar = Apagar tudo e substituir`);
 
     if (!substituir) {
-      if (!confirm('Apagar todos os processos atuais?')) return;
+      if (!confirm('⚠️ Apagar TODOS os processos atuais?')) return;
       await new Promise(r => {
         const tx = db.transaction(STORE, 'readwrite');
         tx.objectStore(STORE).clear();
@@ -3139,17 +3128,17 @@ function importarBackup(event) {
         tx.objectStore(STORE).add(novo).onsuccess = () => { count++; res(); };
       });
     }
-
-    showSaveIndicator(`✅ ${count} processos importados com sucesso!`);
+    showSaveIndicator(`✅ ${count} processos importados!`);
     if (document.getElementById('modalConsulta').classList.contains('open')) buscarRegistros();
   };
   reader.readAsText(file);
 }
 
-// ===================== FUNÇÕES BÁSICAS =====================
+// ===================== FUNÇÕES ORIGINAIS (mantidas) =====================
 function updateBadge() {
   const v = document.getElementById('numProc').value;
-  if (v) document.getElementById('headerBadge').textContent = v;
+  const badge = document.getElementById('headerBadge');
+  if (v && badge) badge.textContent = v;
 }
 
 let currentSection = 0;
@@ -3162,6 +3151,19 @@ function goTo(idx) {
     else if (i < idx) s.classList.add('done');
   });
   currentSection = idx;
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function toggleOpt(el) {
+  const input = el.querySelector('input');
+  if (input.type === 'radio') {
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => r.closest('.opt-item').classList.remove('selected'));
+  }
+  el.classList.toggle('selected', input.checked || input.type === 'radio');
+}
+
+function toggleTerceiro(show) {
+  document.getElementById('blocoTerceiro').style.display = show ? 'block' : 'none';
 }
 
 function abrirConsulta() {
@@ -3175,44 +3177,42 @@ function fecharConsulta() {
 
 function buscarRegistros() {
   if (!db) return;
-  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
   const tx = db.transaction(STORE, 'readonly');
   const req = tx.objectStore(STORE).getAll();
-  req.onsuccess = (e) => {
-    let list = e.target.result || [];
-    if (q) {
-      list = list.filter(r => 
-        (r.numProc || '').toLowerCase().includes(q) || 
-        (r.nomeEmp || '').toLowerCase().includes(q)
-      );
-    }
-    renderRecords(list);
+  req.onsuccess = e => {
+    let all = e.target.result || [];
+    all.sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    if (q) all = all.filter(r => 
+      (r.numProc||'').toLowerCase().includes(q) || (r.nomeEmp||'').toLowerCase().includes(q)
+    );
+    renderRecords(all);
   };
 }
 
 function renderRecords(records) {
   const container = document.getElementById('recordsContainer');
-  document.getElementById('recCount').textContent = `${records.length} processo(s) encontrado(s)`;
+  document.getElementById('recCount').textContent = records.length + ' processo(s) encontrado(s)';
 
-  if (records.length === 0) {
+  if (!records.length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><div>Nenhum processo encontrado.</div></div>';
     return;
   }
 
-  let html = `<table class="records-table"><thead><tr><th>Nº Proc</th><th>Empregado</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead><tbody>`;
+  let html = '<table class="records-table"><thead><tr><th>Nº Proc.</th><th>Empregado</th><th>Status</th><th>Data</th><th>Ações</th></tr></thead><tbody>';
   records.forEach(r => {
     html += `<tr>
-      <td>${r.numProc || '—'}</td>
+      <td><strong>${r.numProc || '—'}</strong></td>
       <td>${r.nomeEmp || '—'}</td>
       <td>${r.decisaoTipo ? 'Finalizado' : 'Em andamento'}</td>
       <td>${r.updatedAt ? new Date(r.updatedAt).toLocaleDateString('pt-BR') : '—'}</td>
       <td>
-        <button onclick="carregarProcesso(${r.id});event.stopPropagation()">Abrir</button>
-        <button onclick="excluirProcesso(${r.id});event.stopPropagation()" style="color:red">Excluir</button>
+        <button class="rec-btn" onclick="carregarProcesso(${r.id});event.stopPropagation()">Abrir</button>
+        <button class="rec-btn danger" onclick="excluirProcesso(${r.id});event.stopPropagation()">Excluir</button>
       </td>
     </tr>`;
   });
-  html += `</tbody></table>`;
+  html += '</tbody></table>';
   container.innerHTML = html;
 }
 
@@ -3230,7 +3230,7 @@ function carregarProcesso(id) {
 }
 
 function excluirProcesso(id) {
-  if (confirm('Excluir este processo?')) {
+  if (confirm('Excluir este processo permanentemente?')) {
     db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
     buscarRegistros();
   }
@@ -3244,20 +3244,18 @@ function restoreFormData(data) {
   updateBadge();
 }
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    await openDB();
-    document.getElementById('dbStatus').textContent = '✓ Banco pronto';
-    setTimeout(() => document.getElementById('dbStatus').textContent = '', 3000);
+// Auto-save
+document.addEventListener('input', () => {
+  if (isRestoring) return;
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => salvarNoDB(true), 2000);
+});
 
-    const proximo = await sugerirProximoNumProc();
-    const inp = document.getElementById('numProc');
-    if (inp) inp.placeholder = proximo;
-  } catch (err) {
-    console.error(err);
-    document.getElementById('dbStatus').textContent = '⚠ Erro crítico no banco';
-  }
+document.addEventListener('DOMContentLoaded', async () => {
+  await openDB();
+  const proximo = await sugerirProximoNumProc();
+  const inp = document.getElementById('numProc');
+  if (inp) inp.placeholder = proximo;
 });
 </script>
 
