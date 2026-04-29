@@ -2940,255 +2940,1478 @@
 
 
 <script>
-// ============================================================
-// INDEXEDDB — PERSISTENCE ENGINE (VERSÃO CORRIGIDA)
-const DB_NAME = 'CAAA_DB';
-const DB_VERSION = 3;
-const STORE = 'processos';
-let db = null;
-let currentId = null;
-let autoSaveTimer = null;
-let isRestoring = false;
+  // ============================================================
+  // INDEXEDDB — PERSISTENCE ENGINE
+  // ============================================================
+  const DB_NAME = 'CAAA_DB';
+  const DB_VERSION = 2; // v2: importação robusta sem limite
+  const STORE = 'processos';
+  let db = null;
+  let currentId = null;
+  let autoSaveTimer = null;
+  let isRestoring = false; // bloqueia auto-save durante carregamento de processo
 
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = e => {
-      const d = e.target.result;
-      if (!d.objectStoreNames.contains(STORE)) {
-        const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('numProc', 'numProc', { unique: false });
-        store.createIndex('nomeEmp', 'nomeEmp', { unique: false });
-        store.createIndex('placaBem', 'placaBem', { unique: false });
-        store.createIndex('updatedAt', 'updatedAt', { unique: false });
-      }
-    };
-    req.onsuccess = e => { db = e.target.result; resolve(db); };
-    req.onerror = e => reject(e);
-  });
-}
-
-// Coleta todos os dados do formulário (mantido próximo do original)
-function collectFormData() {
-  const data = {};
-  document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
-    data[el.id] = el.value;
-  });
-
-  const radioNames = ['comunicou','instaurar','formaNotif','compareceu','modalDefesa',
-    'falhaManu','solicitouPrazo','gravada','penalidade','haDesconto',
-    'rescisorio','recurso','haTerceiro'];
-  radioNames.forEach(name => {
-    const checked = document.querySelector(`input[name="${name}"]:checked`);
-    data['radio_' + name] = checked ? checked.value : '';
-  });
-
-  const checkNames = ['provas'];
-  checkNames.forEach(name => {
-    const checked = [...document.querySelectorAll(`input[name="${name}"]:checked`)];
-    data['check_' + name] = checked.map(c => c.parentElement.textContent.trim()).join('|');
-  });
-
-  const dc = document.querySelector('#sec4 .decision-card.selected-card .dc-title');
-  data.decisaoLabel = dc ? dc.textContent : '';
-  data.decisaoTipo = document.getElementById('decisaoTipo') ? document.getElementById('decisaoTipo').value : '';
-
-  ['p1','p2','p3','p4'].forEach(p => {
-    data[`${p}voto`] = document.getElementById(`${p}voto`) ? document.getElementById(`${p}voto`).value : '';
-  });
-  ['di1','di2','di3','di4'].forEach(p => {
-    data[`${p}_voto`] = document.getElementById(p + '_voto') ? document.getElementById(p + '_voto').value : '';
-  });
-
-  data.registrosPorExtenso = typeof coletarRegistrosPorExtenso === 'function' ? coletarRegistrosPorExtenso() : [];
-  data.status = data.decisaoTipo ? 'finalizado' : 'em-andamento';
-  data.updatedAt = new Date().toISOString();
-  data.numProc = document.getElementById('numProc').value || '';
-  data.nomeEmp = document.getElementById('nomeEmp').value || '';
-  data.placaBem = document.getElementById('placaBem').value || '';
-
-  return data;
-}
-
-// === NOVO: Sugerir próximo número de processo ===
-async function sugerirProximoNumProc() {
-  if (!db) return `CAAA-0001/${new Date().getFullYear()}`;
-
-  return new Promise(resolve => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = () => {
-      const records = req.result || [];
-      const ano = new Date().getFullYear();
-      const numeros = records
-        .map(r => r.numProc)
-        .filter(n => n && n.startsWith('CAAA-') && n.endsWith(`/${ano}`))
-        .map(n => parseInt(n.match(/CAAA-(\d{4})/)?.[1] || '0', 10))
-        .filter(n => n > 0);
-
-      const proximo = numeros.length ? Math.max(...numeros) + 1 : 1;
-      resolve(`CAAA-${proximo.toString().padStart(4, '0')}/${ano}`);
-    };
-    req.onerror = () => resolve(`CAAA-0001/${new Date().getFullYear()}`);
-  });
-}
-
-// Salvar
-async function salvarNoDB(showMsg = true) {
-  if (!db) return;
-  const data = collectFormData();
-  if (!data.numProc && !data.nomeEmp) return;
-
-  const duplicado = await checkNumProcDuplicado(data.numProc, currentId);
-  if (duplicado) {
-    mostrarErroDuplicata(true);
-    showSaveIndicator('⛔ Número de processo já existe!');
-    return;
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = e => {
+        const d = e.target.result;
+        // Cria o objectStore se não existir (v1 → v2: sem mudança de schema)
+        if (!d.objectStoreNames.contains(STORE)) {
+          const store = d.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true });
+          store.createIndex('numProc',    'numProc',    { unique: false });
+          store.createIndex('nomeEmp',    'nomeEmp',    { unique: false });
+          store.createIndex('placaBem',   'placaBem',   { unique: false });
+          store.createIndex('updatedAt',  'updatedAt',  { unique: false });
+        }
+        // v2: garante índice nomeTerceiro para busca
+        const tx = e.target.transaction;
+        if (tx) {
+          try {
+            const st = tx.objectStore(STORE);
+            if (!st.indexNames.contains('nomeTerceiro')) {
+              st.createIndex('nomeTerceiro', 'nomeTerceiro', { unique: false });
+            }
+          } catch(ex) { /* índice já existe */ }
+        }
+      };
+      req.onsuccess = e => { db = e.target.result; resolve(db); };
+      req.onerror = e => reject(e);
+    });
   }
 
-  if (currentId) data.id = currentId;
-
-  const tx = db.transaction(STORE, 'readwrite');
-  const req = currentId ? tx.objectStore(STORE).put(data) : tx.objectStore(STORE).add(data);
-
-  req.onsuccess = () => {
-    if (!currentId) currentId = req.result;
-    updateDbStatus();
-    if (showMsg) showSaveIndicator('✓ Salvo automaticamente');
-  };
-}
-
-function showSaveIndicator(msg) {
-  const ind = document.getElementById('saveIndicator');
-  ind.textContent = msg;
-  ind.classList.add('show');
-  setTimeout(() => ind.classList.remove('show'), 2500);
-}
-
-async function checkNumProcDuplicado(numProc, excludeId) {
-  if (!db || !numProc) return false;
-  return new Promise(resolve => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).getAll();
-    req.onsuccess = e => {
-      const exists = (e.target.result || []).some(r => 
-        r.numProc && r.numProc.trim().toLowerCase() === numProc.trim().toLowerCase() && r.id !== excludeId
-      );
-      resolve(exists);
-    };
-    req.onerror = () => resolve(false);
-  });
-}
-
-function mostrarErroDuplicata(show) {
-  const inp = document.getElementById('numProc');
-  if (inp) {
-    inp.style.borderColor = show ? '#b03030' : '';
-    inp.style.boxShadow = show ? '0 0 0 3px rgba(176,48,48,0.15)' : '';
+  // ---- Collect all form data into a flat object ----
+  function collectFormData() {
+    const data = {};
+    // All inputs, selects, textareas with IDs
+    document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+      data[el.id] = el.value;
+    });
+    // Radio buttons (by name)
+    const radioNames = ['comunicou','instaurar','formaNotif','compareceu','modalDefesa',
+      'falhaManu','solicitouPrazo','gravada','penalidade','haDesconto',
+      'rescisorio','recurso','haTerceiro'];
+    radioNames.forEach(name => {
+      const checked = document.querySelector(`input[name="${name}"]:checked`);
+      data['radio_' + name] = checked ? checked.value : '';
+    });
+    // Checkboxes by name
+    const checkNames = ['provas'];
+    checkNames.forEach(name => {
+      const checked = [...document.querySelectorAll(`input[name="${name}"]:checked`)];
+      data['check_' + name] = checked.map(c => c.parentElement.textContent.trim()).join('|');
+    });
+    // Unnamed checkboxes in opt-items (provas da empresa / do empregado / descontos)
+    document.querySelectorAll('.opt-item input[type="checkbox"]:not([name])').forEach((cb, i) => {
+      data['anonCb_' + i] = cb.checked ? '1' : '0';
+    });
+    // Decision card
+    const dc = document.querySelector('#sec4 .decision-card.selected-card .dc-title');
+    data['decisaoLabel'] = dc ? dc.textContent : '';
+    // Voto opts in parecer form
+    ['p1','p2','p3','p4'].forEach(p => {
+      const v = document.querySelector(`#${p}parecer`);
+      data[`${p}parecer`] = v ? v.value : '';
+      const vt = document.getElementById(`${p}voto`);
+      data[`${p}voto`] = vt ? vt.value : '';
+    });
+    // Salva votos das Decisoes Individuais
+    ['di1','di2','di3','di4'].forEach(function(p) {
+      const vt = document.getElementById(p + '_voto');
+      data[p + '_voto'] = vt ? vt.value : '';
+    });
+    // Salva textos dos registros por extenso de cada options-grid (por indice)
+    var gridTexts = [];
+    document.querySelectorAll('.options-grid').forEach(function(grid, i) {
+      var rid = grid.dataset.rid;
+      var div = rid ? document.getElementById(rid) : null;
+      gridTexts.push({
+        idx: i,
+        text: div ? div.innerHTML : '',
+        display: div ? div.style.display : 'none',
+        hasRid: !!rid
+      });
+    });
+    data._gridTexts = gridTexts;
+    // Status
+    data.status = data.decisaoLabel ? 'finalizado' : 'em-andamento';
+    data.updatedAt = new Date().toISOString();
+    data.numProc = document.getElementById('numProc').value || '';
+    // Salva status de cada parcela na tabela
+    const parcelasStatus = [];
+    document.querySelectorAll('#parcelasBody tr').forEach(function(tr) {
+      const sel = tr.querySelector('select');
+      parcelasStatus.push(sel ? sel.value : '—');
+    });
+    data._parcelasStatus = parcelasStatus;
+    data.nomeEmp = document.getElementById('nomeEmp').value || '';
+    data.placaBem = document.getElementById('placaBem').value || '';
+    data.placaTerceiro = document.getElementById('placaTerceiro') ? document.getElementById('placaTerceiro').value || '' : '';
+    data.nomeTerceiro = document.getElementById('nomeTerceiro') ? document.getElementById('nomeTerceiro').value || '' : '';
+    return data;
   }
-}
 
-// Novo Processo com numeração automática
-async function novoProcesso() {
-  if (currentId) await salvarNoDB(false);
-
-  if (!confirm('Iniciar novo processo? O atual será salvo automaticamente.')) return;
-
-  isRestoring = true;
-  currentId = null;
-
-  document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
-    if (el.type !== 'hidden') el.value = '';
-  });
-  document.querySelectorAll('.opt-item').forEach(el => el.classList.remove('selected'));
-  document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
-  document.querySelectorAll('.voto-opt').forEach(el => el.classList.remove('voto-selected'));
-
-  const proximo = await sugerirProximoNumProc();
-  document.getElementById('numProc').value = proximo;
-  updateBadge();
-
-  document.getElementById('blocoTerceiro').style.display = 'none';
-  const tb = document.getElementById('tabelaParcelas');
-  if (tb) tb.style.display = 'none';
-  const pb = document.getElementById('parcelasBody');
-  if (pb) pb.innerHTML = '';
-
-  goTo(0);
-  showSaveIndicator(`➕ Novo processo — Número sugerido: ${proximo}`);
-  setTimeout(() => isRestoring = false, 500);
-}
-
-// Exportar e Importar (melhorados)
-async function exportarBackup() {
-  if (!db) return alert('Banco não está pronto.');
-  const tx = db.transaction(STORE, 'readonly');
-  const req = tx.objectStore(STORE).getAll();
-  req.onsuccess = () => {
-    const records = req.result || [];
-    const payload = { exportedAt: new Date().toISOString(), appVersion: 'CAAA-FORM v2.1', records };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `CAAA_backup_${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showSaveIndicator(`⬇️ Backup exportado (${records.length} processos)`);
-  };
-}
-
-function importarBackup(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  event.target.value = '';
-
-  const reader = new FileReader();
-  reader.onload = async (e) => {
-    let payload;
-    try { payload = JSON.parse(e.target.result); } catch { alert('Arquivo inválido'); return; }
-
-    const records = Array.isArray(payload.records) ? payload.records : Array.isArray(payload) ? payload : [];
-    if (!records.length) return alert('Nenhum processo encontrado.');
-
-    const substituir = confirm(`Importar ${records.length} processos?\n\nOK = Adicionar\nCancelar = Substituir tudo`);
-
-    if (!substituir) {
-      if (!confirm('Apagar todos os processos atuais?')) return;
-      await new Promise(r => db.transaction(STORE, 'readwrite').objectStore(STORE).clear().onsuccess = r);
-    }
-
-    let count = 0;
-    for (let rec of records) {
-      const novo = {...rec};
-      delete novo.id;
-      if (await checkNumProcDuplicado(novo.numProc)) {
-        novo.numProc = await sugerirProximoNumProc();
+  // ---- Restore form data ----
+  function restoreFormData(data) {
+    document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+      if (data[el.id] !== undefined) el.value = data[el.id];
+    });
+    // Radios
+    const radioNames = ['comunicou','instaurar','formaNotif','compareceu','modalDefesa',
+      'falhaManu','solicitouPrazo','gravada','penalidade','haDesconto',
+      'rescisorio','recurso','haTerceiro'];
+    radioNames.forEach(name => {
+      const val = data['radio_' + name];
+      if (val) {
+        const rb = document.querySelector(`input[name="${name}"][value="${val}"]`);
+        if (rb) {
+          rb.checked = true;
+          rb.closest('.opt-item').classList.add('selected');
+          // Side effects
+          if (name === 'haTerceiro') toggleTerceiro(val === 'sim');
+        }
       }
-      await new Promise(res => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).add(novo).onsuccess = () => { count++; res(); };
+    });
+    // Anon checkboxes
+    document.querySelectorAll('.opt-item input[type="checkbox"]:not([name])').forEach((cb, i) => {
+      if (data['anonCb_' + i] === '1') {
+        cb.checked = true;
+        cb.closest('.opt-item').classList.add('selected');
+      }
+    });
+    // Named checkboxes (provas)
+    const provasVal = data['check_provas'] || '';
+    document.querySelectorAll('input[name="provas"]').forEach(cb => {
+      const label = cb.parentElement.textContent.trim();
+      if (provasVal.includes(label)) {
+        cb.checked = true;
+        cb.closest('.opt-item').classList.add('selected');
+      }
+    });
+    // Decision card
+    if (data.decisaoLabel) {
+      document.querySelectorAll('.decision-card').forEach(dc => {
+        if (dc.querySelector('.dc-title') && dc.querySelector('.dc-title').textContent === data.decisaoLabel) {
+          dc.classList.add('selected-card');
+        }
       });
     }
-    showSaveIndicator(`✅ ${count} processo(s) importado(s)!`);
-    if (document.getElementById('modalConsulta').classList.contains('open')) buscarRegistros();
+    // Sync Comunicação da Decisão form
+    if (data.decisaoTipo) {
+      setTimeout(function(){ syncFcDecisao(data.decisaoTipo); }, 300);
+    }
+    // Voto opts
+    ['p1','p2','p3','p4'].forEach(p => {
+      if (data[`${p}voto`]) {
+        const vt = document.getElementById(`${p}voto`);
+        if (vt) vt.value = data[`${p}voto`];
+        const opts = document.querySelectorAll(`#p${p.slice(1)}parecer`)?.closest?.('.parecer-member-body')?.querySelectorAll('.voto-opt');
+        // fallback: find by value
+        document.querySelectorAll('.voto-opt').forEach(opt => {
+          const body = opt.closest('.parecer-member-body');
+          if (body) {
+            const hidden = body.querySelector(`input[id="${p}voto"]`);
+            if (hidden && data[`${p}voto`]) {
+              const map = {'sem_culpa':'Sem Culpa','culpa':'Culpa','dolo':'Dolo'};
+              if (opt.textContent.includes(map[data[`${p}voto`]])) opt.classList.add('voto-selected');
+            }
+          }
+        });
+      }
+    });
+    // Badge + synced spans
+    updateBadge();
+    const rem = parseFloat(data['remuneracao']) || 0;
+    if (rem) document.getElementById('limiteDesc').value = (rem * 0.4).toFixed(2);
+    // Re-sync all standalone forms after restore
+    setTimeout(() => syncAllFromSection1(), 200);
+    // Recalcula a tabela de parcelas automaticamente com os valores restaurados
+    setTimeout(function() {
+      calcParcelas();
+      // Após gerar a tabela, restaura o status de cada parcela
+      if (Array.isArray(data._parcelasStatus) && data._parcelasStatus.length) {
+        setTimeout(function() {
+          const rows = document.querySelectorAll('#parcelasBody tr');
+          data._parcelasStatus.forEach(function(val, i) {
+            if (rows[i]) {
+              const sel = rows[i].querySelector('select');
+              if (sel && val) sel.value = val;
+            }
+          });
+        }, 150);
+      }
+    }, 300);
+    // Restaura registros por extenso de todas as opções marcadas (radio/checkbox)
+    setTimeout(function() {
+      // Se temos _gridTexts salvo, usa ele diretamente (mais confiavel)
+      var usarGridTexts = Array.isArray(data._gridTexts) && data._gridTexts.some(function(e){ return e && e.text && e.display !== 'none'; });
+      if (!usarGridTexts) {
+        // Fallback: reconstrói a partir dos itens selecionados (processos antigos sem _gridTexts)
+        document.querySelectorAll('.options-grid').forEach(function(grid) {
+          const sel = [...grid.querySelectorAll('.opt-item.selected')];
+          if (!sel.length) return;
+          let rid = grid.dataset.rid;
+          if (!rid) {
+            rid = 'reg_restore_' + Date.now() + '_' + Math.floor(Math.random()*9999);
+            grid.dataset.rid = rid;
+          }
+          let titulo = '';
+          const parent = grid.closest('.field-group') || grid.closest('.field-row') || grid.parentElement;
+          if (parent) {
+            const lb = parent.querySelector(':scope > label') || parent.querySelector('label');
+            if (lb) titulo = lb.firstChild ? lb.firstChild.textContent.replace(/[*]/g,'').trim() : '';
+          }
+          const selTexts = sel.map(function(item) {
+            const lbEl = item.querySelector('.opt-label');
+            const subEl = item.querySelector('.opt-sub');
+            let txt = lbEl ? lbEl.textContent.trim() : item.textContent.trim();
+            if (subEl && subEl.textContent.trim()) txt += ' · ' + subEl.textContent.trim();
+            return txt;
+          });
+          let regDiv = document.getElementById(rid);
+          if (!regDiv) {
+            regDiv = document.createElement('div');
+            regDiv.id = rid;
+            regDiv.style.cssText = 'margin:6px 0 14px;padding:8px 14px;background:rgba(13,27,42,0.05);border-left:3px solid var(--gold);border-radius:3px;font-size:12.5px;color:var(--navy);font-weight:500;line-height:1.6;';
+            grid.insertAdjacentElement('afterend', regDiv);
+          }
+          regDiv.style.display = 'block';
+          regDiv.innerHTML = '✔️ ' + (titulo ? '<strong>' + titulo + ':</strong> ' : '') + selTexts.join(' &nbsp;│&nbsp; ');
+        });
+      }
+      // Restaura labels de voto dos pareceres individuais (formParecer)
+      ['p1','p2','p3','p4'].forEach(function(p) {
+        const hiddenEl = document.getElementById(p + 'voto');
+        if (!hiddenEl || !hiddenEl.value) return;
+        const val = hiddenEl.value;
+        const textoEl = document.getElementById(p + 'votoTexto');
+        if (textoEl && VOTO_LABELS[val]) {
+          textoEl.textContent = VOTO_LABELS[val];
+          textoEl.style.display = 'block';
+        }
+        // Marca visualmente o voto-opt correto
+        const body = hiddenEl.closest('.parecer-member-body');
+        if (body) {
+          const map = {'sem_culpa':'Sem Culpa','culpa':'Culpa','dolo':'Dolo'};
+          body.querySelectorAll('.voto-opt').forEach(function(opt) {
+            opt.classList.toggle('voto-selected', opt.textContent.includes(map[val] || ''));
+          });
+        }
+      });
+      // Restaura labels de voto das Decisões Individuais (formDecisaoIndividual)
+      ['di1','di2','di3','di4'].forEach(function(p) {
+        const hiddenEl = document.getElementById(p + '_voto');
+        if (!hiddenEl || !hiddenEl.value) return;
+        const val = hiddenEl.value;
+        const textoEl = document.getElementById(p + '_votoTexto');
+        if (textoEl && DI_VOTO_LABELS && DI_VOTO_LABELS[val]) {
+          textoEl.textContent = DI_VOTO_LABELS[val];
+          textoEl.style.display = 'block';
+        }
+        // Marca o card selecionado
+        const block = hiddenEl.closest('.comunicacao-block');
+        if (block) {
+          block.querySelectorAll('.decision-card').forEach(function(c) {
+            const title = c.querySelector('.dc-title');
+            const mapCard = {'sem_culpa':'Sem Culpa','culpa':'Culpa','dolo':'Dolo'};
+            c.classList.toggle('selected-card', title && title.textContent.includes(mapCard[val] || ''));
+          });
+        }
+      });
+      // Restaura texto da decisão coletiva (sec4)
+      const decisaoTipoEl = document.getElementById('decisaoTipo');
+      if (decisaoTipoEl && decisaoTipoEl.value) {
+        const textoEl = document.getElementById('decisaoTexto');
+        if (textoEl && DECISAO_LABELS[decisaoTipoEl.value]) {
+          textoEl.textContent = DECISAO_LABELS[decisaoTipoEl.value];
+          textoEl.style.display = 'block';
+        }
+      }
+      // Restaura textos dos registros por extenso das options-grids (por indice)
+      if (Array.isArray(data._gridTexts)) {
+        var allGrids = document.querySelectorAll('.options-grid');
+        data._gridTexts.forEach(function(entry) {
+          if (!entry || !entry.text || entry.display === 'none') return;
+          var grid = allGrids[entry.idx];
+          if (!grid) return;
+          // Garante que o grid tem um rid
+          var rid = grid.dataset.rid;
+          if (!rid) {
+            rid = 'reg_restore_' + entry.idx + '_' + Date.now();
+            grid.dataset.rid = rid;
+          }
+          var div = document.getElementById(rid);
+          if (!div) {
+            div = document.createElement('div');
+            div.id = rid;
+            div.style.cssText = 'margin:6px 0 14px;padding:8px 14px;background:rgba(13,27,42,0.05);border-left:3px solid var(--gold);border-radius:3px;font-size:12.5px;color:var(--navy);font-weight:500;line-height:1.6;';
+            grid.insertAdjacentElement('afterend', div);
+          }
+          div.innerHTML = entry.text;
+          div.style.display = entry.display || 'block';
+        });
+      }
+    }, 400);
+  }
+
+  // ---- Coleta registros por extenso de todas as selecoes visiveis ----
+  function coletarRegistrosPorExtenso() {
+    const regs = [];
+    // Divs de registro criados pelo toggleOpt (data-rid)
+    document.querySelectorAll('.options-grid[data-rid]').forEach(function(grid) {
+      const rid = grid.dataset.rid;
+      const div = document.getElementById(rid);
+      if (div && div.style.display !== 'none' && div.textContent.trim()) {
+        regs.push(div.textContent.trim().replace(/^✔️\s*/,''));
+      }
+    });
+    // Decision cards (sec4 - decisao coletiva)
+    const dc = document.querySelector('#sec4 .decision-card.selected-card');
+    if (dc) {
+      const t = dc.querySelector('.dc-title'), s = dc.querySelector('.dc-sub');
+      regs.push('Decisao Coletiva: ' + (t ? t.textContent.trim() : '') + (s ? ' — ' + s.textContent.trim() : ''));
+    }
+    // Votos formParecer
+    const VMAP = {'sem_culpa':'Sem Culpa/Dolo','culpa':'Culpa Comprovada','dolo':'Dolo Comprovado'};
+    ['p1','p2','p3','p4'].forEach(function(p, i) {
+      const h = document.getElementById(p + 'voto');
+      if (h && h.value) regs.push('Voto Membro ' + (i+1) + ': ' + (VMAP[h.value] || h.value));
+    });
+    // Votos formDecisaoIndividual
+    ['di1','di2','di3','di4'].forEach(function(p, i) {
+      const h = document.getElementById(p + '_voto');
+      if (h && h.value) regs.push('Decisao Individual Membro ' + (i+1) + ': ' + (VMAP[h.value] || h.value));
+    });
+    // Decision cards formComunicacao
+    const fc = document.querySelector('#formComunicacao .decision-card.selected-card');
+    if (fc) {
+      const t = fc.querySelector('.dc-title');
+      regs.push('Comunicacao da Decisao: ' + (t ? t.textContent.trim() : ''));
+    }
+    return regs;
+  }
+
+  // ---- Verifica numProc duplicado ----
+  function checkNumProcDuplicado(numProc, excludeId) {
+    return new Promise(function(resolve) {
+      if (!db || !numProc) { resolve(false); return; }
+      const tx = db.transaction(STORE, 'readonly');
+      const req = tx.objectStore(STORE).getAll();
+      req.onsuccess = function(e) {
+        const all = e.target.result || [];
+        const dup = all.find(function(r) {
+          return r.numProc && r.numProc.trim().toLowerCase() === numProc.trim().toLowerCase() && r.id !== excludeId;
+        });
+        resolve(!!dup);
+      };
+      req.onerror = function() { resolve(false); };
+    });
+  }
+
+  function mostrarErroDuplicata(show) {
+    const inp = document.getElementById('numProc');
+    let errEl = document.getElementById('numProcDupError');
+    if (show) {
+      if (inp) { inp.style.borderColor = '#b03030'; inp.style.boxShadow = '0 0 0 3px rgba(176,48,48,0.15)'; }
+      if (!errEl) {
+        errEl = document.createElement('div');
+        errEl.id = 'numProcDupError';
+        errEl.style.cssText = 'color:#b03030;font-size:12px;font-weight:600;margin-top:5px;padding:8px 12px;background:rgba(176,48,48,0.07);border-left:3px solid #b03030;border-radius:2px;';
+        errEl.textContent = '⛔ Este numero de processo ja existe no banco. Use outro numero.';
+        if (inp && inp.parentNode) inp.parentNode.appendChild(errEl);
+      }
+    } else {
+      if (inp) { inp.style.borderColor = ''; inp.style.boxShadow = ''; }
+      if (errEl) errEl.remove();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const inp = document.getElementById('numProc');
+    if (!inp) return;
+    inp.addEventListener('blur', async function() {
+      if (!inp.value.trim()) { mostrarErroDuplicata(false); return; }
+      mostrarErroDuplicata(await checkNumProcDuplicado(inp.value.trim(), currentId));
+    });
+    inp.addEventListener('input', function() { mostrarErroDuplicata(false); });
+  });
+
+  // ---- Save to DB ----
+  async function salvarNoDB(showMsg = true) {
+    if (!db || !db.transaction) return;
+    const data = collectFormData();
+    if (!data.numProc && !data.nomeEmp) return;
+    if (!currentId && data.numProc) {
+      const dup = await checkNumProcDuplicado(data.numProc, null);
+      if (dup) { mostrarErroDuplicata(true); showSaveIndicator('⛔ Numero duplicado — NAO salvo'); return; }
+    }
+    // Anexa registros por extenso ao objeto salvo
+    data.registrosPorExtenso = coletarRegistrosPorExtenso();
+    if (currentId) data.id = currentId;
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const req = currentId ? tx.objectStore(STORE).put(data) : tx.objectStore(STORE).add(data);
+      req.onsuccess = e => {
+        if (!currentId) currentId = e.target.result;
+        updateDbStatus();
+        if (showMsg) showSaveIndicator('✓ Salvo automaticamente');
+        resolve(currentId);
+      };
+    });
+  }
+
+  function showSaveIndicator(msg) {
+    const ind = document.getElementById('saveIndicator');
+    ind.textContent = msg;
+    ind.classList.add('show');
+    setTimeout(() => ind.classList.remove('show'), 2500);
+  }
+
+  function updateDbStatus() {
+    const el = document.getElementById('dbStatus');
+    if (currentId) {
+      const now = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      el.textContent = `Proc. #${currentId} · salvo às ${now}`;
+    }
+  }
+
+  function salvarRascunho() {
+    salvarNoDB(false).then(() => showSaveIndicator('💾 Rascunho salvo!'));
+  }
+
+  // ---- Auto-save on input (debounced 2s) ----
+  document.addEventListener('input', () => {
+    if (isRestoring) return;
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => salvarNoDB(true), 2000);
+  });
+  document.addEventListener('change', () => {
+    if (isRestoring) return;
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => salvarNoDB(true), 1000);
+  });
+
+  // ---- New process ----
+  function novoProcesso() {
+    if (currentId) {
+      salvarNoDB(false);
+    }
+    if (!confirm('Iniciar um novo processo? O processo atual já está salvo e pode ser consultado na tela de busca.')) return;
+    isRestoring = true;
+    clearTimeout(autoSaveTimer);
+    currentId = null;
+    // Clear all inputs
+    document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
+      if (el.type !== 'hidden') el.value = '';
+    });
+    document.querySelectorAll('.opt-item').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.decision-card').forEach(el => el.classList.remove('selected-card'));
+    document.querySelectorAll('.voto-opt').forEach(el => el.classList.remove('voto-selected'));
+    // Limpa os divs de registro por extenso das options-grids
+    document.querySelectorAll('.options-grid[data-rid]').forEach(function(grid) {
+      var rid = grid.dataset.rid;
+      var div = document.getElementById(rid);
+      if (div) { div.style.display = 'none'; div.innerHTML = ''; }
+      delete grid.dataset.rid;
+    });
+    // Limpa os textos de voto/decisao registrados
+    document.querySelectorAll('.di-voto-registro, [id$="_votoTexto"], #decisaoTexto').forEach(function(el) {
+      el.textContent = ''; el.style.display = 'none';
+    });
+    document.getElementById('blocoTerceiro').style.display = 'none';
+    // Limpa a tabela de parcelas ao iniciar novo processo
+    var parcelasBody = document.getElementById('parcelasBody');
+    if (parcelasBody) parcelasBody.innerHTML = '';
+    var tabelaParcelas = document.getElementById('tabelaParcelas');
+    if (tabelaParcelas) tabelaParcelas.style.display = 'none';
+    document.getElementById('headerBadge').textContent = 'CAAA-FORM v1.0';
+    document.getElementById('dbStatus').textContent = '';
+    goTo(0);
+    showSaveIndicator('➕ Novo processo iniciado');
+    setTimeout(() => { isRestoring = false; }, 400);
+  }
+
+  // ---- Search / Consulta ----
+  function abrirConsulta() {
+    document.getElementById('modalConsulta').classList.add('open');
+    document.getElementById('searchInput').value = '';
+    buscarRegistros();
+  }
+  function fecharConsulta() {
+    document.getElementById('modalConsulta').classList.remove('open');
+  }
+
+  function buscarRegistros() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.getAll();
+    req.onsuccess = e => {
+      let all = e.target.result || [];
+      // Sort newest first
+      all.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      if (q) {
+        all = all.filter(r =>
+          (r.numProc||'').toLowerCase().includes(q) ||
+          (r.nomeEmp||'').toLowerCase().includes(q) ||
+          (r.placaBem||'').toLowerCase().includes(q) ||
+          (r.placaTerceiro||'').toLowerCase().includes(q) ||
+          (r.nomeTerceiro||'').toLowerCase().includes(q)
+        );
+      }
+      renderRecords(all);
+    };
+  }
+
+  function renderRecords(records) {
+    const container = document.getElementById('recordsContainer');
+    const countEl = document.getElementById('recCount');
+    countEl.textContent = records.length + ' processo(s) encontrado(s)';
+
+    if (!records.length) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128194;</div><div>Nenhum processo encontrado.</div></div>';
+      return;
+    }
+
+    const decisaoMap = {
+      'sem_culpa': ['rec-badge sem-culpa','Sem Culpa'],
+      'culpa':     ['rec-badge culpa','Culpa'],
+      'dolo':      ['rec-badge dolo','Dolo'],
+      '':          ['rec-badge em-andamento','Em andamento'],
+    };
+
+    let rows = records.map(function(r) {
+      const dt = r.updatedAt ? new Date(r.updatedAt).toLocaleString('pt-BR') : '-';
+      const dec = r.decisaoTipo || '';
+      const dm = decisaoMap[dec] || ['rec-badge em-andamento','Em andamento'];
+      const statusClass = dec ? 'rec-badge finalizado' : 'rec-badge em-andamento';
+      const statusLabel = dec ? 'Finalizado' : 'Em andamento';
+      const detId = 'det_' + r.id;
+
+      const regs = Array.isArray(r.registrosPorExtenso) ? r.registrosPorExtenso : [];
+      let regsHTML;
+      if (regs.length) {
+        regsHTML = '<ul style="margin:8px 0 0;padding-left:20px;list-style:disc;font-size:12.5px;line-height:1.9;color:#1a1a2e;">'
+          + regs.map(function(reg){ return '<li>' + reg + '</li>'; }).join('')
+          + '</ul>';
+      } else {
+        regsHTML = '<em style="color:#6b6b8a;font-size:12px;">Nenhuma sele&#231;&#227;o registrada. Fa&#231;a sele&#231;&#245;es e salve o processo.</em>';
+      }
+
+      const detailRow = '<tr id="' + detId + '" style="display:none;">'
+        + '<td colspan="7" style="padding:0 24px 16px;background:#f9f6ef;border-bottom:2px solid #c9a84c;">'
+        + '<div style="border-left:4px solid #c9a84c;padding:12px 16px;background:#fff;border-radius:0 4px 4px 0;margin-top:4px;">'
+        + '<div style="font-family:&#39;IBM Plex Mono&#39;,monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#c9a84c;margin-bottom:8px;font-weight:700;">'
+        + 'Sele&#231;&#245;es Registradas por Extenso</div>'
+        + regsHTML
+        + '</div></td></tr>';
+
+      return '<tr onclick="toggleDetalhe(\'' + detId + '\',this)" style="cursor:pointer;" title="Ver sele&#231;&#245;es">'
+        + '<td><strong style="font-family:&#39;IBM Plex Mono&#39;,monospace;font-size:12px;">' + (r.numProc||'&mdash;') + '</strong></td>'
+        + '<td>' + (r.nomeEmp||'&mdash;') + '</td>'
+        + '<td style="font-family:&#39;IBM Plex Mono&#39;,monospace;font-size:12px;">' + (r.placaBem||r.placaTerceiro||'&mdash;') + '</td>'
+        + '<td><span class="' + statusClass + '">' + statusLabel + '</span></td>'
+        + '<td><span class="' + dm[0] + '">' + dm[1] + '</span></td>'
+        + '<td style="color:var(--text-light);font-size:12px;">' + dt + '</td>'
+        + '<td><div class="rec-actions" onclick="event.stopPropagation()">'
+        + '<button class="rec-btn" onclick="carregarProcesso(' + r.id + ')">&#128194; Abrir</button>'
+        + '<button class="rec-btn danger" onclick="excluirProcesso(' + r.id + ')">&#128465;</button>'
+        + '</div></td></tr>' + detailRow;
+    }).join('');
+
+    container.innerHTML = '<table class="records-table"><thead><tr>'
+      + '<th>N&#186; Proc.</th><th>Empregado</th><th>Placa/Bem</th>'
+      + '<th>Status</th><th>Decis&#227;o</th><th>&#218;ltima Atualiza&#231;&#227;o</th><th></th>'
+      + '</tr></thead><tbody>' + rows + '</tbody></table>'
+      + '<p style="font-size:11px;color:#6b6b8a;text-align:center;margin-top:8px;">'
+      + '&#128161; Clique em qualquer linha para ver as sele&#231;&#245;es registradas por extenso</p>';
+  }
+
+  function toggleDetalhe(detId, rowEl) {
+    const det = document.getElementById(detId);
+    if (!det) return;
+    const aberto = det.style.display !== 'none';
+    det.style.display = aberto ? 'none' : 'table-row';
+    if (rowEl) rowEl.style.background = aberto ? '' : 'rgba(201,168,76,0.07)';
+  }
+
+
+  function carregarProcesso(id) {
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).get(id);
+    req.onsuccess = e => {
+      const data = e.target.result;
+      if (!data) return;
+      // Salva processo atual antes de trocar, se necessário
+      if (currentId && currentId !== id) salvarNoDB(false);
+      // Bloqueia auto-save durante todo o restore
+      isRestoring = true;
+      clearTimeout(autoSaveTimer);
+      currentId = id;
+      restoreFormData(data);
+      fecharConsulta();
+      goTo(0);
+      showSaveIndicator(`📂 Processo ${data.numProc || '#'+id} carregado`);
+      updateDbStatus();
+      // Libera auto-save somente após o restore + syncAlls completarem
+      setTimeout(() => { isRestoring = false; }, 600);
+    };
+  }
+
+  function excluirProcesso(id) {
+    if (!confirm('Excluir este processo permanentemente? Esta ação não pode ser desfeita.')) return;
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(id);
+    tx.oncomplete = () => {
+      if (currentId === id) { currentId = null; document.getElementById('dbStatus').textContent = ''; }
+      buscarRegistros();
+    };
+  }
+
+  // ---- Close modal on overlay click ----
+  document.getElementById('modalConsulta').addEventListener('click', function(e) {
+    if (e.target === this) fecharConsulta();
+  });
+
+  // ============================================================
+  // ORIGINAL FUNCTIONS
+  // ============================================================
+  let currentSection = 0;
+
+  function goTo(idx) {
+    // If leaving section 1 (index 0), sync all fields to standalone forms
+    if (currentSection === 0 && idx !== 0) {
+      syncAllFromSection1();
+    }
+    document.querySelectorAll('.section').forEach((s,i) => s.classList.toggle('visible', i === idx));
+    document.querySelectorAll('.prog-step').forEach((s,i) => {
+      s.classList.remove('active','done');
+      if (i === idx) s.classList.add('active');
+      else if (i < idx) s.classList.add('done');
+    });
+    currentSection = idx;
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    // Auto-save on section change
+    if (!isRestoring && (currentId || (document.getElementById('numProc').value || document.getElementById('nomeEmp').value))) {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => salvarNoDB(true), 800);
+    }
+  }
+
+  function toggleOpt(el) {
+    const input = el.querySelector('input');
+    const grid  = el.closest('.options-grid');
+
+    if (input.type === 'radio') {
+      const name = input.name;
+      document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.closest('.opt-item').classList.remove('selected'));
+      el.classList.add('selected');
+    } else {
+      el.classList.toggle('selected', input.checked);
+    }
+
+    // Registra e fixa texto abaixo do grupo (igual ao padrao dos votos)
+    if (!grid) return;
+    let rid = grid.dataset.rid;
+    if (!rid) {
+      rid = 'reg_' + Date.now() + '_' + Math.floor(Math.random()*9999);
+      grid.dataset.rid = rid;
+    }
+
+    // Label do campo pai
+    let titulo = '';
+    const parent = grid.closest('.field-group') || grid.closest('.field-row') || grid.parentElement;
+    if (parent) {
+      const lb = parent.querySelector(':scope > label') || parent.querySelector('label');
+      if (lb) titulo = lb.firstChild ? lb.firstChild.textContent.replace(/[*]/g,'').trim() : '';
+    }
+
+    // Itens selecionados
+    const sel = [...grid.querySelectorAll('.opt-item.selected')].map(function(item) {
+      const lbEl = item.querySelector('.opt-label');
+      const subEl = item.querySelector('.opt-sub');
+      let txt = lbEl ? lbEl.textContent.trim() : item.textContent.trim();
+      if (subEl && subEl.textContent.trim()) txt += ' · ' + subEl.textContent.trim();
+      return txt;
+    });
+
+    // Cria ou atualiza div de registro logo apos o grid
+    let regDiv = document.getElementById(rid);
+    if (!regDiv) {
+      regDiv = document.createElement('div');
+      regDiv.id = rid;
+      regDiv.style.cssText = 'margin:6px 0 14px;padding:8px 14px;background:rgba(13,27,42,0.05);border-left:3px solid var(--gold);border-radius:3px;font-size:12.5px;color:var(--navy);font-weight:500;line-height:1.6;';
+      grid.insertAdjacentElement('afterend', regDiv);
+    }
+
+    if (sel.length) {
+      regDiv.style.display = 'block';
+      regDiv.innerHTML = '✔️ ' + (titulo ? '<strong>' + titulo + ':</strong> ' : '') + sel.join(' &nbsp;│&nbsp; ');
+    } else {
+      regDiv.style.display = 'none';
+      regDiv.innerHTML = '';
+    }
+  }
+
+  const DECISAO_LABELS = {
+    'sem_culpa': '🏳️ Decisão registrada: SEM CULPA / DOLO — Processo arquivado. Nenhuma penalidade ou desconto será aplicado.',
+    'culpa':     '⚖️ Decisão registrada: CULPA COMPROVADA — Empregado agiu com negligência, imprudência ou imperícia. Penalidade disciplinar proporcional aplicável.',
+    'dolo':      '🔴 Decisão registrada: DOLO COMPROVADO — Ato intencional. Pode ensejar demissão por justa causa e desconto integral do dano.'
   };
-  reader.readAsText(file);
-}
 
-// === Mantenha todas as suas funções originais a partir daqui ===
-// (goTo, toggleOpt, toggleTerceiro, printSection, printStandalone, printAll, etc.)
-// Cole todo o restante do seu script original logo abaixo deste comentário:
+  // Mapa: valor -> penalidade padrão sugerida no select
+  const DECISAO_PENALIDADE = {
+    'sem_culpa': 'Nenhuma — Arquivamento',
+    'culpa':     'Advertência',
+    'dolo':      'Justa Causa'
+  };
 
-// ... (cole aqui todo o resto do script que você tinha antes, a partir da linha onde começa "let currentSection = 0;" até o final)
+  // Atualiza o texto e card no formComunicacao a partir de um valor
+  function syncFcDecisao(val) {
+    // Selecionar card correspondente no formComunicacao
+    var fcCards = document.querySelectorAll('#formComunicacao .decision-card');
+    var map = ['sem_culpa','culpa','dolo'];
+    fcCards.forEach(function(c, i) {
+      c.classList.toggle('selected-card', map[i] === val);
+    });
+    // Atualizar hidden e texto
+    var fcHidden = document.getElementById('fc_decisao');
+    if (fcHidden) fcHidden.value = val || '';
+    var fcTexto = document.getElementById('fc_decisaoTexto');
+    if (fcTexto) {
+      fcTexto.textContent = DECISAO_LABELS[val] || '';
+      fcTexto.style.display = val ? 'block' : 'none';
+    }
+    // Sugerir penalidade no select se ainda não preenchido
+    var fcPen = document.getElementById('fc_penalidade');
+    if (fcPen && (!fcPen.value || fcPen.value === '')) {
+      fcPen.value = DECISAO_PENALIDADE[val] || '';
+    }
+    // Sincronizar valor do dano se disponível
+    var fcValor = document.getElementById('fc_valor');
+    var valorDano = document.getElementById('valorDano');
+    if (fcValor && valorDano && valorDano.value && (!fcValor.value || fcValor.value === '')) {
+      fcValor.value = valorDano.value;
+    }
+    var fcParcelas = document.getElementById('fc_parcelas');
+    var numParcelas = document.getElementById('numParcelas');
+    if (fcParcelas && numParcelas && numParcelas.value && (!fcParcelas.value || fcParcelas.value === '')) {
+      fcParcelas.value = numParcelas.value;
+    }
+  }
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', async function() {
-  await openDB().catch(console.error);
-  const numSug = await sugerirProximoNumProc();
-  const inp = document.getElementById('numProc');
-  if (inp && !inp.value) inp.placeholder = numSug;
-});
+  function selectDecision(el, val) {
+    document.querySelectorAll('#sec4 .decision-card').forEach(c => c.classList.remove('selected-card'));
+    el.classList.add('selected-card');
+    document.getElementById('decisaoTipo').value = val;
+    const textoEl = document.getElementById('decisaoTexto');
+    if (textoEl) {
+      textoEl.textContent = DECISAO_LABELS[val] || '';
+      textoEl.style.display = val ? 'block' : 'none';
+    }
+    // Sincronizar automaticamente com Comunicação da Decisão
+    syncFcDecisao(val);
+  }
+
+  // Chamado ao clicar nos cards do próprio formComunicacao
+  function fcSelectDecisao(el, val) {
+    el.closest('.comunicacao-block').querySelectorAll('.decision-card').forEach(function(c){ c.classList.remove('selected-card'); });
+    el.classList.add('selected-card');
+    var fcHidden = document.getElementById('fc_decisao');
+    if (fcHidden) fcHidden.value = val;
+    var fcTexto = document.getElementById('fc_decisaoTexto');
+    if (fcTexto) {
+      fcTexto.textContent = DECISAO_LABELS[val] || '';
+      fcTexto.style.display = val ? 'block' : 'none';
+    }
+    // Sugerir penalidade
+    var fcPen = document.getElementById('fc_penalidade');
+    if (fcPen && (!fcPen.value || fcPen.value === '')) {
+      fcPen.value = DECISAO_PENALIDADE[val] || '';
+    }
+  }
+
+  const VOTO_LABELS = {
+    'sem_culpa': '🏳️ Voto registrado: SEM CULPA / DOLO — Arquivamento sem penalidade ou desconto.',
+    'culpa':     '⚖️ Voto registrado: CULPA COMPROVADA — Negligência, imprudência ou imperícia. Penalidade proporcional aplicável.',
+    'dolo':      '🔴 Voto registrado: DOLO COMPROVADO — Ato intencional. Pode ensejar justa causa e desconto integral.'
+  };
+
+  function selectVoto(el, prefix, val) {
+    el.closest('.parecer-member-body').querySelectorAll('.voto-opt').forEach(v => v.classList.remove('voto-selected'));
+    el.classList.add('voto-selected');
+    document.getElementById(prefix + 'voto').value = val;
+    // Show text label below voto grid
+    const textoEl = document.getElementById(prefix + 'votoTexto');
+    if (textoEl) {
+      textoEl.textContent = VOTO_LABELS[val] || '';
+      textoEl.style.display = val ? 'block' : 'none';
+    }
+  }
+
+  function toggleTerceiro(show) {
+    document.getElementById('blocoTerceiro').style.display = show ? 'block' : 'none';
+  }
+
+  function updateBadge() {
+    const v = document.getElementById('numProc').value;
+    const badge = document.getElementById('headerBadge');
+    if (v) badge.textContent = v;
+    ['pf_numProc','di_numProc','fc_numProc','fd_numProc'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = v || '_______________';
+    });
+  }
+
+  // ============================================================
+  // AUTOCOMPLETE — sync Section 1 fields to all standalone forms
+  // ============================================================
+  // Map: sourceId -> [{targetId, type:'val'|'text'}]
+  const SYNC_MAP = {
+    'numProc':      [{id:'fd_proc',    t:'val'}, {id:'fc_proc',   t:'val'}, {id:'fdb_numProc', t:'text'}],
+    'nomeEmp':      [{id:'fd_nomeEmp', t:'val'}, {id:'fc_empregado',t:'val'},
+                     {id:'pf_nomeEmp', t:'text'},{id:'di_nomeEmp', t:'text'},{id:'fdb_nomeEmp',t:'text'}],
+    'matricula':    [{id:'fd_matricula',t:'val'},{id:'fc_matricula',t:'val'}],
+    'funcaoEmp':    [{id:'fd_cargo',   t:'val'}, {id:'fc_cargo',   t:'val'}],
+    'setor':        [{id:'fd_setor',   t:'val'}, {id:'fc_setor',   t:'val'}],
+    'dataAdmissao': [{id:'fd_dataAdmissao',t:'val'}],
+    'placaBem':     [{id:'fd_placa',   t:'val'}],
+    'dataOcorrencia':[{id:'fd_dataFato',t:'val'}],
+    'dataInst':     [],  // handled separately for text display
+    'supervisor':   [],
+    'local':        [{id:'fd_local',   t:'val'}],
+    'valorOrcamento':[{id:'fd_valorEmpresa',t:'val'}],
+  };
+
+  let syncDebounce = null;
+  let syncedFields = new Set();
+
+  function flashField(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('sync-flash');
+      void el.offsetWidth; // reflow
+      el.classList.add('sync-flash');
+    }
+  }
+
+  function showAutocompleteToast() {
+    const t = document.getElementById('autocompleteToast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  function syncField(sourceId, value) {
+    const targets = SYNC_MAP[sourceId];
+    if (!targets || !targets.length) return;
+    let synced = false;
+    targets.forEach(({id, t}) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (t === 'val' && el.value !== value) { el.value = value; flashField(id); synced = true; }
+      else if (t === 'text' && el.textContent !== value) { el.textContent = value || '_______________'; synced = true; }
+    });
+    if (synced) syncedFields.add(sourceId);
+  }
+
+  function syncAllFromSection1() {
+    syncedFields.clear();
+    Object.keys(SYNC_MAP).forEach(srcId => {
+      const el = document.getElementById(srcId);
+      if (el) syncField(srcId, el.value);
+    });
+    // dataInst special handling for text spans
+    const diVal = document.getElementById('dataInst') ? document.getElementById('dataInst').value : '';
+    const diText = diVal ? new Date(diVal + 'T00:00:00').toLocaleDateString('pt-BR') : '_______________';
+    ['pf_dataInst','di_dataInst','fc_dataInst','fd_dataInst'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = diText;
+    });
+    if (syncedFields.size > 0) showAutocompleteToast();
+  }
+
+  document.addEventListener('input', function(e) {
+    if (e.target.id === 'remuneracao') {
+      const rem = parseFloat(e.target.value) || 0;
+      document.getElementById('limiteDesc').value = (rem * 0.4).toFixed(2);
+    }
+    // Live sync for mapped fields
+    if (SYNC_MAP[e.target.id] !== undefined) {
+      clearTimeout(syncDebounce);
+      syncDebounce = setTimeout(() => syncField(e.target.id, e.target.value), 600);
+    }
+    if (e.target.id === 'nomeEmp') {
+      ['pf_nomeEmp','di_nomeEmp'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.textContent = e.target.value || '_______________';
+      });
+    }
+    if (e.target.id === 'dataInst') {
+      const v = e.target.value ? new Date(e.target.value + 'T00:00:00').toLocaleDateString('pt-BR') : '_______________';
+      ['pf_dataInst','di_dataInst','fc_dataInst','fd_dataInst'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.textContent = v;
+      });
+    }
+  });
+
+  // Sync when navigating away from section 1 (handled inside goTo)
+
+  const ALL_STANDALONE = ['formDefesa','formParecer','formDecisaoIndividual','formComunicacao','formDefesaB'];
+
+  // ── Open a clean new window with content and print it ──────────────────────
+  function openPrintWindow(contentHTML, title) {
+    const w = window.open('', '_blank', 'width=960,height=750');
+    if (!w) { alert('Permita pop-ups para este site para imprimir.'); return; }
+
+    // Collect ALL <style> tags (skip the empty override tag)
+    let css = '';
+    document.querySelectorAll('style').forEach(s => {
+      if (s.id !== 'printOverrideStyle') css += s.textContent + '\n';
+    });
+
+    const gfonts = 'https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap';
+
+    w.document.write('<!DOCTYPE html><html lang="pt-BR"><head>'
+      + '<meta charset="UTF-8">'
+      + '<title>' + title + '</title>'
+      + '<link href="' + gfonts + '" rel="stylesheet">'
+      + '<style>' + css + '</style>'
+      + '<style>'
+      + 'body{background:#fff!important;padding:16px!important;margin:0}'
+      + '.paper{display:block!important;box-shadow:none!important;border:none!important;max-width:100%!important;margin:0!important}'
+      + '.standalone-form{display:block!important;box-shadow:none!important;border:none!important;max-width:100%!important;margin:0!important}'
+      + '.section{display:block!important;height:auto!important;overflow:visible!important}'
+      + '#logoWrapper,.section-print-bar,.btn-row,.progress-bar,.print-menu,.db-bar,.modal-overlay,.save-indicator,.autocomplete-toast{display:none!important}'
+      + '.opt-item.selected{border-color:var(--navy)!important;background:rgba(13,27,42,0.07)!important}'
+      + '.decision-card.selected-card{border-color:var(--navy)!important;background:rgba(13,27,42,0.07)!important}'
+      + '.voto-opt.voto-selected{border-color:var(--navy)!important;background:rgba(13,27,42,0.08)!important;font-weight:600!important}'
+      + '@media print{body{padding:0!important}}'
+      + '</style>'
+      + '</head><body>'
+      + contentHTML
+      + '<script>document.fonts?document.fonts.ready.then(function(){window.focus();window.print()}):setTimeout(function(){window.focus();window.print()},900)<\/script>'
+      + '</body></html>');
+    w.document.close();
+  }
+
+
+
+  // ── Get the header HTML (logo hidden, just title text) ──────────────────────
+  function getHeaderHTML() {
+    const hdr = document.querySelector('.doc-header');
+    if (!hdr) return '';
+    const clone = hdr.cloneNode(true);
+    // Remove logo wrapper
+    const logo = clone.querySelector('#logoWrapper');
+    if (logo) logo.remove();
+    return `<div class="paper"><div class="doc-header">${clone.innerHTML}</div></div>`;
+  }
+
+  // ── Print a single section by index ────────────────────────────────────────
+  function printSection(idx) {
+    stampValuesToDOM();
+    const secs = document.querySelectorAll('.section');
+    const sec  = secs[idx];
+    if (!sec) return;
+
+    // Temporarily inject override CSS to make this section visible for cloneNode
+    const ov = document.getElementById('printOverrideStyle');
+    ov.textContent = '#' + sec.id + '{display:block!important;height:auto!important;overflow:visible!important}';
+    void sec.offsetHeight; // force reflow
+
+    const clone = sec.cloneNode(true);
+    ov.textContent = ''; // restore
+
+    clone.style.cssText = 'display:block!important;';
+    clone.querySelectorAll('.section-print-bar,.btn-row').forEach(el => el.remove());
+
+    const titles = ['Identificação','Comunicação','Constituição CAAA','Instrução','Decisão','Penalidade e Desconto','Recurso e Assinaturas'];
+    const content = '<div class="paper">'
+      + '<div class="doc-header" style="padding:20px 32px;">'
+      + '<span class="header-label">Formulário Oficial · CAAA</span>'
+      + '<h1 class="header-title">Procedimento Administrativo de Apuração de Sinistro</h1>'
+      + '<p class="header-sub">Seção ' + (idx+1) + ' — ' + (titles[idx]||'') + '</p>'
+      + '</div><div class="doc-content">' + clone.outerHTML + '</div></div>';
+    openPrintWindow(content, 'CAAA · Seção ' + (idx+1));
+  }
+
+  // ── Print a standalone form ─────────────────────────────────────────────────
+  function printStandalone(formId) {
+    const el = document.getElementById(formId);
+    if (!el) return;
+    const clone = el.cloneNode(true);
+    // Remove print button inside the form
+    clone.querySelectorAll('.btn-secondary.btn-sm').forEach(b => b.remove());
+    openPrintWindow(`<div class="standalone-form" style="display:block;">${clone.innerHTML}</div>`, formId);
+  }
+
+  // ── Print everything ────────────────────────────────────────────────────────
+  function printAll() {
+    stampValuesToDOM();
+    const secs = document.querySelectorAll('.section');
+    const titles = ['Identificação','Comunicação','Constituição CAAA','Instrução','Decisão','Penalidade e Desconto','Recurso e Assinaturas'];
+    const ov = document.getElementById('printOverrideStyle');
+
+    let content = '<div class="paper" style="box-shadow:none;border:none;">'
+      + '<div class="doc-header" style="padding:20px 32px;">'
+      + '<span class="header-label">Formulário Oficial · CAAA</span>'
+      + '<h1 class="header-title">Procedimento Administrativo de Apuração de Sinistro</h1>'
+      + '<p class="header-sub">Comissão de Apuração de Acidentes e Avarias</p>'
+      + '</div><div class="doc-content">';
+
+    secs.forEach((sec, i) => {
+      ov.textContent = '#' + sec.id + '{display:block!important;height:auto!important;overflow:visible!important}';
+      void sec.offsetHeight;
+      const clone = sec.cloneNode(true);
+      ov.textContent = '';
+      clone.style.cssText = 'display:block!important;';
+      clone.querySelectorAll('.section-print-bar,.btn-row').forEach(el => el.remove());
+      if (i > 0) content += '<div style="page-break-before:always;break-before:page;"></div>';
+      content += clone.outerHTML;
+    });
+
+    content += '</div></div>';
+
+    ALL_STANDALONE.forEach(formId => {
+      const el = document.getElementById(formId);
+      if (!el) return;
+      const clone = el.cloneNode(true);
+      clone.querySelectorAll('.btn-secondary.btn-sm').forEach(b => b.remove());
+      content += '<div style="page-break-before:always;break-before:page;"></div>'
+        + '<div class="standalone-form" style="display:block;box-shadow:none;border:none;">'
+        + clone.innerHTML + '</div>';
+    });
+
+    openPrintWindow(content, 'CAAA · Documento Completo');
+  }
+
+
+
+  // ── Stamp current form values into DOM for cloneNode capture ───────────────
+  function stampValuesToDOM() {
+    document.querySelectorAll('input, select, textarea').forEach(function(el) {
+      try {
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          if (el.checked) el.setAttribute('checked','checked');
+          else el.removeAttribute('checked');
+        } else {
+          el.setAttribute('value', el.value);
+          if (el.tagName === 'TEXTAREA') el.textContent = el.value;
+          if (el.tagName === 'SELECT') {
+            Array.from(el.options).forEach(function(o) {
+              if (o.value === el.value) o.setAttribute('selected','selected');
+              else o.removeAttribute('selected');
+            });
+          }
+        }
+      } catch(e){}
+    });
+  }
+
+  // ── Parcelas calculator ─────────────────────────────────────────────────────
+  function calcParcelas() {
+    var n     = parseInt((document.getElementById('numParcelas')||{}).value)||0;
+    var total = parseFloat((document.getElementById('valorDano')||{}).value)||0;
+    var lim   = parseFloat((document.getElementById('limiteDesc')||{}).value)||0;
+    var startM= ((document.getElementById('dataPrimParcela')||{}).value)||'';
+    var tbody = document.getElementById('parcelasBody');
+    var tabDiv= document.getElementById('tabelaParcelas');
+    if (!tbody||!tabDiv) return;
+    if (!n||!total) { tabDiv.style.display='none'; return; }
+    var base = lim>0 ? Math.min(parseFloat((total/n).toFixed(2)),lim) : parseFloat((total/n).toFixed(2));
+    tbody.innerHTML='';
+    var acum=0;
+    for (var i=1;i<=n;i++) {
+      var last=i===n;
+      var val=last ? parseFloat((total-acum).toFixed(2)) : base;
+      acum+=val;
+      var mes='—';
+      if (startM) {
+        var pts=startM.split('-');
+        var d=new Date(parseInt(pts[0]),parseInt(pts[1])-1+(i-1),1);
+        mes=d.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+        mes=mes.charAt(0).toUpperCase()+mes.slice(1);
+      }
+      var bg=(last&&val!==base)?'background:rgba(201,168,76,0.06);':'';
+      var tr=document.createElement('tr');
+      tr.style.cssText='border-bottom:1px solid #c4bdb0;'+bg;
+      tr.innerHTML='<td style="padding:8px 12px;font-family:IBM Plex Mono,monospace;font-weight:600;">'+i+'ª</td>'
+        +'<td style="padding:8px 12px;">'+mes+'</td>'
+        +'<td style="padding:8px 12px;font-family:IBM Plex Mono,monospace;">R$ '+val.toFixed(2).replace('.',',')+'</td>'
+        +'<td style="padding:8px 12px;font-family:IBM Plex Mono,monospace;">R$ '+acum.toFixed(2).replace('.',',')+'</td>'
+        +'<td style="padding:8px 12px;"><select style="padding:4px 8px;border:1px solid #c4bdb0;border-radius:3px;font-size:12px;background:#fff;">'
+        +'<option>—</option><option>⏳ Pendente</option><option>✅ Pago</option><option>⚠️ Em atraso</option></select></td>';
+      tbody.appendChild(tr);
+    }
+    var tot=document.createElement('tr');
+    tot.style.cssText='background:#0d1b2a;color:#fff;font-weight:600;';
+    tot.innerHTML='<td colspan="2" style="padding:8px 12px;font-family:IBM Plex Mono,monospace;font-size:11px;letter-spacing:1px;">TOTAL</td>'
+      +'<td style="padding:8px 12px;font-family:IBM Plex Mono,monospace;">R$ '+total.toFixed(2).replace('.',',')+'</td>'
+      +'<td style="padding:8px 12px;font-family:IBM Plex Mono,monospace;">R$ '+acum.toFixed(2).replace('.',',')+'</td>'
+      +'<td style="padding:8px 12px;"></td>';
+    tbody.appendChild(tot);
+    tabDiv.style.display='block';
+  }
+
+  document.addEventListener('input', function(e) {
+    if (e.target && ['valorDano','numParcelas','remuneracao'].indexOf(e.target.id)>=0)
+      setTimeout(calcParcelas,200);
+  });
+  document.addEventListener('change', function(e) {
+    if (e.target && e.target.id==='dataPrimParcela') setTimeout(calcParcelas,100);
+  });
+
+  // ============================================================
+  // BACKUP — EXPORTAR / IMPORTAR JSON
+  // ============================================================
+
+  async function exportarBackup() {
+    if (!db || !db.transaction) { alert('Banco de dados não está pronto.'); return; }
+    const tx = db.transaction(STORE, 'readonly');
+    const req = tx.objectStore(STORE).getAll();
+    req.onsuccess = function(e) {
+      const records = e.target.result || [];
+      if (!records.length) { alert('Nenhum processo encontrado para exportar.'); return; }
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        appVersion: 'CAAA-FORM v2.0',
+        totalRecords: records.length,
+        records: records
+      };
+      const json = JSON.stringify(payload, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = 'CAAA_backup_' + dateStr + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showSaveIndicator('⬇️ Backup exportado (' + records.length + ' processo(s))');
+    };
+    req.onerror = function() { alert('Erro ao exportar o backup.'); };
+  }
+
+  function importarBackup(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = '';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      let payload;
+      try { payload = JSON.parse(e.target.result); }
+      catch(err) {
+        alert('Arquivo inválido. Certifique-se de que é um JSON de backup gerado por este sistema.');
+        return;
+      }
+
+      const records = Array.isArray(payload.records) ? payload.records
+                    : Array.isArray(payload)          ? payload
+                    : null;
+
+      if (!records || !records.length) {
+        alert('Nenhum processo encontrado no arquivo de backup.');
+        return;
+      }
+
+      const modo = confirm(
+        'Importar ' + records.length + ' processo(s) do arquivo "' + file.name + '".\n\n' +
+        'Clique OK → ADICIONAR (mantém os processos existentes).\n' +
+        'Clique Cancelar → SUBSTITUIR tudo (apaga os atuais).'
+      );
+
+      // Insere um registro por vez numa Promise-chain para evitar
+      // que a transaction do IndexedDB expire entre iterações
+      function inserirUm(recs, idx, count) {
+        if (idx >= recs.length) {
+          showSaveIndicator('⬆️ ' + count + ' processo(s) importado(s)!');
+          if (document.getElementById('modalConsulta').classList.contains('open')) buscarRegistros();
+          return;
+        }
+        const novo = Object.assign({}, recs[idx]);
+        delete novo.id; // deixa o IndexedDB gerar novo ID — evita conflito
+        novo.updatedAt = novo.updatedAt || new Date().toISOString();
+
+        const tx = db.transaction(STORE, 'readwrite');
+        const req = tx.objectStore(STORE).add(novo);
+        req.onsuccess = function() { inserirUm(recs, idx + 1, count + 1); };
+        req.onerror   = function() { inserirUm(recs, idx + 1, count);     }; // pula e continua
+      }
+
+      function iniciarImportacao(recs) {
+        showSaveIndicator('⏳ Importando ' + recs.length + ' processo(s)...');
+        inserirUm(recs, 0, 0);
+      }
+
+      if (modo) {
+        // Modo ADICIONAR — insere direto
+        iniciarImportacao(records);
+      } else {
+        // Modo SUBSTITUIR — limpa primeiro, depois insere
+        if (!confirm('⚠️ ATENÇÃO: todos os processos atuais serão APAGADOS. Tem certeza?')) return;
+        const txDel = db.transaction(STORE, 'readwrite');
+        txDel.objectStore(STORE).clear();
+        txDel.oncomplete = function() { iniciarImportacao(records); };
+        txDel.onerror   = function() { alert('Erro ao limpar o banco antes de importar.'); };
+      }
+    };
+    reader.onerror = function() { alert('Erro ao ler o arquivo.'); };
+    reader.readAsText(file, 'UTF-8');
+  }
+
+  // ---- INIT ----
+  openDB().then(function() {
+    var s = document.getElementById('dbStatus');
+    if (s) { s.textContent='✓ Banco de dados pronto'; setTimeout(function(){ if(s.textContent==='✓ Banco de dados pronto') s.textContent=''; },3000); }
+  }).catch(function(err) {
+    var s = document.getElementById('dbStatus');
+    if (s) s.textContent='⚠ Erro ao abrir banco de dados';
+    console.error('IndexedDB error:',err);
+  });
+
+  // ============================================================
+  // FOLHA DE DECISÃO INDIVIDUAL — navegação por membro
+  // ============================================================
+  let diCurrentMembro = 0;
+  const DI_TOTAL = 4;
+  const DI_TITLES = [
+    'Membro 1 — Presidente da Comissão · Administração',
+    'Membro 2 — Mesma Função do Empregado · Pares',
+    'Membro 3 — Mesma Função do Empregado · Pares',
+    'Membro 4 — Administração / Jurídico'
+  ];
+
+  function diGoMembro(idx) {
+    diCurrentMembro = idx;
+    for (var i = 0; i < DI_TOTAL; i++) {
+      var panel = document.getElementById('di_membro_' + i);
+      if (panel) panel.style.display = (i === idx) ? 'block' : 'none';
+    }
+    document.querySelectorAll('.di-tab-btn').forEach(function(btn, i) {
+      btn.classList.toggle('active', i === idx);
+    });
+    var prevBtn = document.getElementById('diPrevBtn');
+    var nextBtn = document.getElementById('diNextBtn');
+    if (prevBtn) prevBtn.style.opacity = idx === 0 ? '0.4' : '1';
+    if (nextBtn) nextBtn.style.opacity = idx === DI_TOTAL - 1 ? '0.4' : '1';
+    var form = document.getElementById('formDecisaoIndividual');
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function diNavMembro(dir) {
+    var next = diCurrentMembro + dir;
+    if (next < 0 || next >= DI_TOTAL) return;
+    diGoMembro(next);
+  }
+
+  // Init: activate tab 0
+  document.addEventListener('DOMContentLoaded', function() {
+    diGoMembro(0);
+  });
+  // Also run immediately in case DOM is already ready
+  (function(){ try { diGoMembro(0); } catch(e){} })();
+
+  const DI_VOTO_LABELS = {
+    'sem_culpa': '🏳️ Voto registrado: SEM CULPA / DOLO — Arquivamento sem penalidade ou desconto salarial.',
+    'culpa':     '⚖️ Voto registrado: CULPA COMPROVADA — Empregado agiu com negligência, imprudência ou imperícia. Penalidade disciplinar proporcional aplicável.',
+    'dolo':      '🔴 Voto registrado: DOLO COMPROVADO — Ato intencional. Pode ensejar demissão por justa causa e desconto integral do dano causado.'
+  };
+
+  function diSelectVoto(el, prefix, val) {
+    // Deselect siblings in same panel
+    el.closest('.comunicacao-block').querySelectorAll('.decision-card').forEach(function(c) {
+      c.classList.remove('selected-card');
+    });
+    el.classList.add('selected-card');
+    var hidden = document.getElementById(prefix + '_voto');
+    if (hidden) hidden.value = val;
+    var textoEl = document.getElementById(prefix + '_votoTexto');
+    if (textoEl) {
+      textoEl.textContent = DI_VOTO_LABELS[val] || '';
+      textoEl.style.display = val ? 'block' : 'none';
+    }
+  }
+
+  // ---- Print single member sheet ----
+  function diPrintMembro(idx) {
+    stampValuesToDOM();
+    var panel = document.getElementById('di_membro_' + idx);
+    if (!panel) return;
+
+    // Temporarily show the panel for cloneNode
+    var wasHidden = panel.style.display === 'none';
+    panel.style.display = 'block';
+    void panel.offsetHeight;
+    var clone = panel.cloneNode(true);
+    if (wasHidden) panel.style.display = 'none';
+
+    // Remove print buttons from clone
+    clone.querySelectorAll('button').forEach(function(b){ b.remove(); });
+    // Make decision cards and voto labels visible in print
+    clone.querySelectorAll('.di-voto-registro').forEach(function(el){ el.style.display = el.textContent.trim() ? 'block' : 'none'; });
+
+    var numProc = document.getElementById('di_numProc') ? document.getElementById('di_numProc').textContent : '___';
+    var nomeEmp = document.getElementById('di_nomeEmp') ? document.getElementById('di_nomeEmp').textContent : '___';
+    var dataInst = document.getElementById('di_dataInst') ? document.getElementById('di_dataInst').textContent : '___';
+
+    var content = '<div class="standalone-form" style="display:block;box-shadow:none;border:none;">'
+      + '<div class="standalone-header" style="background:var(--navy);padding:20px 40px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--gold);">'
+      + '<div><div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:4px;">Formulário Separado · CAAA</div>'
+      + '<div style="font-family:EB Garamond,serif;font-size:20px;font-weight:600;color:#fff;">Folha de Decisão Individual — ' + DI_TITLES[idx] + '</div></div>'
+      + '<div style="text-align:right;font-family:IBM Plex Mono,monospace;font-size:11px;color:rgba(255,255,255,0.65);">'
+      + 'Proc. Nº: ' + numProc + '<br>Empregado: ' + nomeEmp + '<br>Data: ' + dataInst + '</div>'
+      + '</div>'
+      + '<div class="standalone-body">' + clone.outerHTML + '</div></div>';
+
+    openPrintWindow(content, 'CAAA · Decisão Individual — ' + DI_TITLES[idx]);
+  }
+
+  // ---- Print all 4 members ----
+  function diPrintTodos() {
+    stampValuesToDOM();
+    var numProc = document.getElementById('di_numProc') ? document.getElementById('di_numProc').textContent : '___';
+    var nomeEmp = document.getElementById('di_nomeEmp') ? document.getElementById('di_nomeEmp').textContent : '___';
+    var dataInst = document.getElementById('di_dataInst') ? document.getElementById('di_dataInst').textContent : '___';
+
+    var content = '';
+    for (var i = 0; i < DI_TOTAL; i++) {
+      var panel = document.getElementById('di_membro_' + i);
+      if (!panel) continue;
+      var wasHidden = panel.style.display === 'none';
+      panel.style.display = 'block';
+      void panel.offsetHeight;
+      var clone = panel.cloneNode(true);
+      if (wasHidden) panel.style.display = 'none';
+      clone.querySelectorAll('button').forEach(function(b){ b.remove(); });
+      clone.querySelectorAll('.di-voto-registro').forEach(function(el){ el.style.display = el.textContent.trim() ? 'block' : 'none'; });
+
+      if (i > 0) content += '<div style="page-break-before:always;break-before:page;"></div>';
+      content += '<div class="standalone-form" style="display:block;box-shadow:none;border:none;">'
+        + '<div class="standalone-header" style="background:var(--navy);padding:20px 40px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--gold);">'
+        + '<div><div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:4px;">Formulário Separado · CAAA</div>'
+        + '<div style="font-family:EB Garamond,serif;font-size:20px;font-weight:600;color:#fff;">Folha de Decisão Individual — ' + DI_TITLES[i] + '</div></div>'
+        + '<div style="text-align:right;font-family:IBM Plex Mono,monospace;font-size:11px;color:rgba(255,255,255,0.65);">'
+        + 'Proc. Nº: ' + numProc + '<br>Empregado: ' + nomeEmp + '<br>Data: ' + dataInst + '</div>'
+        + '</div>'
+        + '<div class="standalone-body">' + clone.outerHTML + '</div></div>';
+    }
+    openPrintWindow(content, 'CAAA · Decisão Individual — Todos os Membros');
+  }
+
+
+  // ── Sync Membros → Pareceres Individuais ───────────────────────────────────
+  // Quando o digitador preenche nome/cargo na Seção 3 (Constituição CAAA),
+  // os campos correspondentes nos Pareceres Individuais são preenchidos automaticamente.
+  (function() {
+    var MAP = [
+      { src: 'm1nome', dst: 'p1nome' },
+      { src: 'm1cargo', dst: 'p1cargo' },
+      { src: 'm2nome', dst: 'p2nome' },
+      { src: 'm2cargo', dst: 'p2cargo' },
+      { src: 'm3nome', dst: 'p3nome' },
+      { src: 'm3cargo', dst: 'p3cargo' },
+      { src: 'm4nome', dst: 'p4nome' },
+      { src: 'm4cargo', dst: 'p4cargo' },
+    ];
+    MAP.forEach(function(pair) {
+      var srcEl = document.getElementById(pair.src);
+      var dstEl = document.getElementById(pair.dst);
+      if (!srcEl || !dstEl) return;
+      srcEl.addEventListener('input', function() {
+        // Só preenche o destino se estiver vazio ou igual ao valor anterior do source
+        // (não sobrescreve se o membro já editou o parecer manualmente)
+        if (!dstEl.value || dstEl.value === srcEl.dataset.lastSync) {
+          dstEl.value = srcEl.value;
+          dstEl.classList.add('sync-flash');
+          setTimeout(function(){ dstEl.classList.remove('sync-flash'); }, 1200);
+        }
+        srcEl.dataset.lastSync = srcEl.value;
+      });
+    });
+  })();
+
+  // Checkbox toggle
+  document.querySelectorAll('.opt-item input').forEach(function(input) {
+    input.addEventListener('change', function() {
+      if (input.type === 'checkbox') input.closest('.opt-item').classList.toggle('selected', input.checked);
+    });
+  });
+
+  // ============================================================
+  // LOCK SCREEN — SENHA DE ACESSO
+  // ============================================================
+  (function() {
+    // Senha definida aqui (hash SHA-256 para não ficar exposta em texto puro)
+    // Senha atual: @admin0768#
+    var SENHA_HASH = '0061b19ac4d8cfcc18e737632327db14d12ce7476fff3a9fdd4eec662705f8da';
+
+    // Função de hash SHA-256 simples usando SubtleCrypto
+    async function sha256(str) {
+      var buf = new TextEncoder().encode(str);
+      var hashBuf = await crypto.subtle.digest('SHA-256', buf);
+      var arr = Array.from(new Uint8Array(hashBuf));
+      return arr.map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+    }
+
+    // Verifica se já está autenticado na sessão
+    var SESSION_KEY = 'caaa_auth_session';
+    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+      var ls = document.getElementById('lockScreen');
+      if (ls) ls.style.display = 'none';
+      return;
+    }
+
+    // Foca o input ao carregar
+    window.addEventListener('DOMContentLoaded', function() {
+      var inp = document.getElementById('lockInput');
+      if (inp) inp.focus();
+    });
+
+    window.tentarSenha = async function() {
+      var inp = document.getElementById('lockInput');
+      var errEl = document.getElementById('lockError');
+      var val = inp ? inp.value : '';
+      if (!val) {
+        if (errEl) errEl.textContent = 'Digite a senha para continuar.';
+        return;
+      }
+      var hash = await sha256(val);
+      if (hash === SENHA_HASH) {
+        // Senha correta
+        sessionStorage.setItem(SESSION_KEY, '1');
+        var ls = document.getElementById('lockScreen');
+        if (ls) {
+          ls.classList.add('unlocked');
+          setTimeout(function(){ ls.style.display = 'none'; }, 560);
+        }
+      } else {
+        // Senha incorreta
+        if (inp) {
+          inp.classList.add('shake');
+          inp.value = '';
+          setTimeout(function(){ inp.classList.remove('shake'); inp.focus(); }, 400);
+        }
+        if (errEl) {
+          errEl.textContent = '❌ Senha incorreta. Tente novamente.';
+          setTimeout(function(){ errEl.textContent = ''; }, 3000);
+        }
+      }
+    };
+
+    window.toggleLockEye = function() {
+      var inp = document.getElementById('lockInput');
+      var btn = document.getElementById('lockEyeBtn');
+      if (!inp) return;
+      if (inp.type === 'password') {
+        inp.type = 'text';
+        if (btn) btn.textContent = '🙈';
+      } else {
+        inp.type = 'password';
+        if (btn) btn.textContent = '👁️';
+      }
+      inp.focus();
+    };
+  })();
 
 </script>
 
