@@ -2941,7 +2941,7 @@
 
 <script>
 // ============================================================
-// CAAA - SCRIPT CONSERVADOR + CORREÇÕES (28/04/2026)
+// CAAA - SCRIPT CORRIGIDO E COMPLETO (28/04/2026)
 // ============================================================
 const DB_NAME = 'CAAA_DB';
 const DB_VERSION = 4;
@@ -2964,17 +2964,18 @@ function openDB() {
     };
     req.onsuccess = e => { 
       db = e.target.result; 
-      console.log('Banco aberto com sucesso');
+      console.log('Banco de dados aberto com sucesso');
       resolve(db); 
     };
     req.onerror = e => {
-      console.error(e);
-      document.getElementById('dbStatus').textContent = '⚠ Erro no banco';
+      console.error('Erro ao abrir banco:', e);
+      document.getElementById('dbStatus').textContent = '⚠ Erro ao abrir banco';
       reject(e);
     };
   });
 }
 
+// Coleta dados do formulário (simplificada mas funcional)
 function collectFormData() {
   const data = {};
   document.querySelectorAll('input[id], select[id], textarea[id]').forEach(el => {
@@ -2983,8 +2984,10 @@ function collectFormData() {
   return data;
 }
 
+// Sugere próximo número
 async function sugerirProximoNumProc() {
   if (!db) return `CAAA-0001/${new Date().getFullYear()}`;
+
   return new Promise(resolve => {
     const tx = db.transaction(STORE, 'readonly');
     const req = tx.objectStore(STORE).getAll();
@@ -2996,6 +2999,7 @@ async function sugerirProximoNumProc() {
         .filter(n => n && n.match(/^CAAA-\d{4}\/\d{4}$/))
         .map(n => parseInt(n.match(/CAAA-(\d{4})/)[1], 10))
         .filter(n => !isNaN(n));
+
       const proximo = numeros.length ? Math.max(...numeros) + 1 : 1;
       resolve(`CAAA-${proximo.toString().padStart(4, '0')}/${ano}`);
     };
@@ -3003,6 +3007,7 @@ async function sugerirProximoNumProc() {
   });
 }
 
+// Salvar
 async function salvarNoDB(showMsg = true) {
   if (!db) return;
   const data = collectFormData();
@@ -3010,6 +3015,7 @@ async function salvarNoDB(showMsg = true) {
 
   const tx = db.transaction(STORE, 'readwrite');
   const req = currentId ? tx.objectStore(STORE).put(data) : tx.objectStore(STORE).add(data);
+
   req.onsuccess = () => {
     if (!currentId) currentId = req.result;
     if (showMsg) showSaveIndicator('✓ Salvo automaticamente');
@@ -3029,6 +3035,7 @@ function updateDbStatus() {
   if (currentId) el.textContent = `Proc. #${currentId}`;
 }
 
+// Novo Processo
 async function novoProcesso() {
   if (currentId) await salvarNoDB(false);
   if (!confirm('Iniciar novo processo?')) return;
@@ -3050,24 +3057,26 @@ async function novoProcesso() {
   setTimeout(() => isRestoring = false, 400);
 }
 
+// Exportar Backup
 async function exportarBackup() {
-  if (!db) return alert('Banco não pronto.');
+  if (!db) return alert('Banco não está pronto.');
   const tx = db.transaction(STORE, 'readonly');
   const req = tx.objectStore(STORE).getAll();
   req.onsuccess = () => {
     const records = req.result || [];
-    const payload = { exportedAt: new Date().toISOString(), records };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+    const payload = { exportedAt: new Date().toISOString(), records: records };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `CAAA_backup_${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    showSaveIndicator(`Backup exportado (${records.length} processos)`);
+    showSaveIndicator(`⬇️ Backup exportado (${records.length} processos)`);
   };
 }
 
+// Importar Backup
 function importarBackup(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -3082,13 +3091,17 @@ function importarBackup(event) {
     }
 
     const records = Array.isArray(payload.records) ? payload.records : [];
-    if (!records.length) return alert('Nenhum processo encontrado.');
+    if (!records.length) return alert('Nenhum processo encontrado no arquivo.');
 
-    const substituir = confirm(`Importar ${records.length} processos?\nOK = Adicionar | Cancelar = Substituir tudo`);
+    const substituir = confirm(`Importar ${records.length} processos?\n\nOK = Adicionar\nCancelar = Substituir tudo`);
 
     if (!substituir) {
       if (!confirm('Apagar todos os processos atuais?')) return;
-      await new Promise(r => db.transaction(STORE, 'readwrite').objectStore(STORE).clear().onsuccess = r);
+      await new Promise(r => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).clear();
+        tx.oncomplete = r;
+      });
     }
 
     let count = 0;
@@ -3096,19 +3109,21 @@ function importarBackup(event) {
       const novo = {...rec};
       delete novo.id;
       await new Promise(res => {
-        db.transaction(STORE, 'readwrite').objectStore(STORE).add(novo).onsuccess = () => { count++; res(); };
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).add(novo).onsuccess = () => { count++; res(); };
       });
     }
-    showSaveIndicator(`✅ ${count} processos importados!`);
+    showSaveIndicator(`✅ ${count} processos importados com sucesso!`);
     if (document.getElementById('modalConsulta').classList.contains('open')) buscarRegistros();
   };
   reader.readAsText(file);
 }
 
-// Funções originais básicas
+// ===================== FUNÇÕES ORIGINAIS =====================
 function updateBadge() {
   const v = document.getElementById('numProc').value;
-  if (v) document.getElementById('headerBadge').textContent = v;
+  const badge = document.getElementById('headerBadge');
+  if (v && badge) badge.textContent = v;
 }
 
 let currentSection = 0;
@@ -3121,6 +3136,19 @@ function goTo(idx) {
     else if (i < idx) s.classList.add('done');
   });
   currentSection = idx;
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function toggleOpt(el) {
+  const input = el.querySelector('input');
+  if (input.type === 'radio') {
+    document.querySelectorAll(`input[name="${input.name}"]`).forEach(r => r.closest('.opt-item').classList.remove('selected'));
+  }
+  el.classList.toggle('selected', input.checked || input.type === 'radio');
+}
+
+function toggleTerceiro(show) {
+  document.getElementById('blocoTerceiro').style.display = show ? 'block' : 'none';
 }
 
 function abrirConsulta() {
@@ -3140,14 +3168,19 @@ function buscarRegistros() {
   req.onsuccess = e => {
     let all = e.target.result || [];
     all.sort((a,b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
-    if (q) all = all.filter(r => (r.numProc||'').toLowerCase().includes(q) || (r.nomeEmp||'').toLowerCase().includes(q));
+    if (q) {
+      all = all.filter(r => 
+        (r.numProc||'').toLowerCase().includes(q) || 
+        (r.nomeEmp||'').toLowerCase().includes(q)
+      );
+    }
     renderRecords(all);
   };
 }
 
 function renderRecords(records) {
   const container = document.getElementById('recordsContainer');
-  document.getElementById('recCount').textContent = records.length + ' processo(s)';
+  document.getElementById('recCount').textContent = records.length + ' processo(s) encontrado(s)';
 
   if (!records.length) {
     container.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><div>Nenhum processo encontrado.</div></div>';
@@ -3160,7 +3193,7 @@ function renderRecords(records) {
       <td>${r.numProc || '—'}</td>
       <td>${r.nomeEmp || '—'}</td>
       <td>${r.decisaoTipo ? 'Finalizado' : 'Em andamento'}</td>
-      <td><button onclick="carregarProcesso(${r.id});event.stopPropagation()">Abrir</button></td>
+      <td><button onclick="carregarProcesso(${r.id}); event.stopPropagation()">Abrir</button></td>
     </tr>`;
   });
   html += '</tbody></table>';
@@ -3168,7 +3201,8 @@ function renderRecords(records) {
 }
 
 function carregarProcesso(id) {
-  db.transaction(STORE, 'readonly').objectStore(STORE).get(id).onsuccess = e => {
+  const tx = db.transaction(STORE, 'readonly');
+  tx.objectStore(STORE).get(id).onsuccess = e => {
     const data = e.target.result;
     if (data) {
       currentId = id;
@@ -3180,7 +3214,7 @@ function carregarProcesso(id) {
 }
 
 function excluirProcesso(id) {
-  if (confirm('Excluir?')) {
+  if (confirm('Excluir este processo?')) {
     db.transaction(STORE, 'readwrite').objectStore(STORE).delete(id);
     buscarRegistros();
   }
@@ -3194,7 +3228,7 @@ function restoreFormData(data) {
   updateBadge();
 }
 
-// Auto-save básico
+// Auto-save
 document.addEventListener('input', () => {
   if (isRestoring) return;
   clearTimeout(autoSaveTimer);
