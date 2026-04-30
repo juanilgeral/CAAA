@@ -1167,7 +1167,7 @@
           <label>Nº do Procedimento <span class="req">*</span></label>
           <div style="display:flex;gap:6px;align-items:center;">
             <input class="proc-number" type="text" id="numProc" placeholder="CAAA-0001/2025" oninput="updateBadge()" style="flex:1;">
-            <button type="button" onclick="sugerirProximoNumero()" title="Analisa os processos existentes e sugere o próximo número disponível" style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;border:1px solid #b0a898;background:#fff;color:var(--navy);padding:10px 11px;border-radius:2px;cursor:pointer;transition:all 0.18s;flex-shrink:0;" onmouseover="this.style.background='var(--navy)';this.style.color='var(--gold)';this.style.borderColor='var(--navy)';" onmouseout="this.style.background='#fff';this.style.color='var(--navy)';this.style.borderColor='#b0a898';">🔢 Próximo Nº</button>
+            <button type="button" onclick="sugerirProximoNumero()" title="Analisa os processos existentes e sugere o próximo número disponível" style="white-space:nowrap;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;border:1px solid #b0a898;background:#fff;color:var(--navy);padding:10px 11px;border-radius:2px;cursor:pointer;transition:all 0.18s;flex-shrink:0;" onmouseover="this.style.background='var(--navy)';this.style.color='var(--gold)';this.style.borderColor='var(--navy)';" onmouseout="this.style.background='#fff';this.style.color='var(--navy)';this.style.borderColor='#b0a898';">Prox. Nº</button>
           </div>
         </div>
         <div>
@@ -1232,7 +1232,7 @@
 
       <div class="field-group">
         <label>Há terceiro envolvido?</label>
-        <div class="options-grid cols-2" style="margin-top:6px;max-width:360px;">
+        <div class="options-grid cols-2" style="margin-top:6px;max-width:360px;" data-gid="grid_haTerceiro">
           <label class="opt-item" onclick="toggleOpt(this);toggleTerceiro(true)">
             <input type="radio" name="haTerceiro" value="sim"> <div class="opt-label">✅ Sim</div>
           </label>
@@ -1371,7 +1371,7 @@
         <div class="field-row cols-2">
           <div>
             <label>Houve vítimas / feridos?</label>
-            <div class="options-grid cols-2" style="margin-top:6px;">
+            <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_haVitimas">
               <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haVitimas"> <div class="opt-label">✅ Sim</div></label>
               <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haVitimas"> <div class="opt-label">❌ Não</div></label>
             </div>
@@ -1504,7 +1504,7 @@
       <div class="field-row cols-2">
         <div>
           <label>O empregado comunicou o fato imediatamente? <span class="req">*</span></label>
-          <div class="options-grid cols-2" style="margin-top:6px;">
+          <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_comunicou">
             <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="comunicou" value="sim"> <div><div class="opt-label">✅ Sim</div></div></label>
             <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="comunicou" value="nao"> <div><div class="opt-label">❌ Não</div></div></label>
           </div>
@@ -1526,7 +1526,7 @@
 
       <div class="field-group">
         <label>Provas e Documentos Coletados <span class="hint">(marque todos que foram obtidos)</span></label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_provasEmpresa">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">📷 Fotografias</div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">🎥 Vídeos</div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">📋 Boletim de Ocorrência</div></label>
@@ -1555,7 +1555,7 @@
 
       <div class="field-group">
         <label>A CAAA deliberou pela instauração do processo formal? <span class="req">*</span></label>
-        <div class="options-grid cols-2" style="margin-top:6px;">
+        <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_instaurar">
           <label class="opt-item" onclick="toggleOpt(this)">
             <input type="radio" name="instaurar" value="sim">
             <div><div class="opt-label">✅ Sim — há indícios mínimos</div><div class="opt-sub">Processo será instaurado formalmente</div></div>
@@ -1653,7 +1653,7 @@
 
       <div class="field-group">
         <label>Forma de Notificação ao Empregado <span class="req">*</span></label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_formaNotif">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="formaNotif"> <div><div class="opt-label">📝 Recibo Assinado</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="formaNotif"> <div><div class="opt-label">👁️ Recusa c/ Testemunhas</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="formaNotif"> <div><div class="opt-label">📬 Outro Meio</div></div></label>
@@ -1699,7 +1699,7 @@
 
       <div class="field-group">
         <label>Empregado compareceu à reunião? <span class="req">*</span></label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_compareceu">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="compareceu"> <div><div class="opt-label">✅ Sim, compareceu</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="compareceu"> <div><div class="opt-label">❌ Não compareceu s/ justificativa</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="compareceu"> <div><div class="opt-label">📋 Justificou ausência</div></div></label>
@@ -1716,7 +1716,7 @@
 
       <div class="field-group">
         <label>Modalidade da Defesa</label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_modalDefesa">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="modalDefesa"> <div><div class="opt-label">📄 Escrita (pelo empregado)</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="modalDefesa"> <div><div class="opt-label">🖊️ Reduzida a termo pela empresa</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="modalDefesa"> <div><div class="opt-label">🔇 Não apresentou defesa</div></div></label>
@@ -1732,7 +1732,7 @@
 
       <div class="field-group">
         <label>Provas Apresentadas pelo Empregado</label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_provasEmpregado">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">📷 Fotos / Vídeos</div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">💰 Orçamento Alternativo</div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">👥 Provas Testemunhais</div></label>
@@ -1747,7 +1747,7 @@
 
       <div class="field-group">
         <label>Foi identificada falha de manutenção, desgaste natural ou falha imputável à empresa? <span class="req">*</span></label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_falhaManu">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="falhaManu"> <div><div class="opt-label">✅ Sim — falha da empresa</div><div class="opt-sub">Desconto/penalidade vedados</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="falhaManu"> <div><div class="opt-label">🔸 Parcialmente</div><div class="opt-sub">Concausa — mitigar penalidade</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="falhaManu"> <div><div class="opt-label">❌ Não — bem em boas condições</div><div class="opt-sub">Desconto pode ser aplicado</div></div></label>
@@ -1766,7 +1766,7 @@
 
       <div class="field-group">
         <label>O empregado solicitou prazo para produção de contraprovas?</label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_solicitouPrazo">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">✅ Sim — prazo concedido</div><div class="opt-sub">Máx. 5 dias úteis</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">❌ Não solicitou</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">🚫 Solicitou, mas negado</div><div class="opt-sub">Com fundamentação</div></div></label>
@@ -1775,7 +1775,7 @@
 
       <div class="field-group">
         <label>A reunião foi gravada?</label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_gravada">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="gravada"> <div><div class="opt-label">🎙️ Sim — com consentimento de todos</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="gravada"> <div><div class="opt-label">📝 Não — ata detalhada lavrada</div></div></label>
         </div>
@@ -1895,7 +1895,7 @@
 
       <div class="field-group">
         <label>Penalidade Aplicada <span class="req">*</span></label>
-        <div class="options-grid cols-2" style="margin-top:6px;">
+        <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_penalidade">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="penalidade"> <div><div class="opt-label">📋 Advertência</div><div class="opt-sub">Falta leve, primeira ocorrência</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="penalidade"> <div><div class="opt-label">⏸️ Suspensão</div><div class="opt-sub">Informe o número de dias</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="penalidade"> <div><div class="opt-label">🔴 Justa Causa</div><div class="opt-sub">Dolo comprovado / falta grave</div></div></label>
@@ -1913,7 +1913,7 @@
 
       <div class="field-group">
         <label>Haverá desconto salarial?</label>
-        <div class="options-grid cols-2" style="margin-top:6px;">
+        <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_haDesconto">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haDesconto"> <div><div class="opt-label">✅ Sim</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haDesconto"> <div><div class="opt-label">❌ Não</div></div></label>
         </div>
@@ -1921,7 +1921,7 @@
 
       <div class="field-group">
         <label>Natureza do Desconto <span class="hint">(marque o(s) aplicável(eis))</span></label>
-        <div class="options-grid cols-2" style="margin-top:6px;">
+        <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_natDesconto">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🚗 Dano/Avaria a Veículo ou Equipamento</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🚦 Multa de Trânsito</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">📦 Perda de Carga</div></div></label>
@@ -1982,7 +1982,7 @@
 
       <div class="field-group">
         <label>Desconto em Haveres Rescisórios? <span class="hint">(CCT – Cláusula 7ª, § 4º)</span></label>
-        <div class="options-grid cols-2" style="margin-top:6px;">
+        <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_rescisorio">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="rescisorio"> <div><div class="opt-label">✅ Sim — autorizado pela CCT</div><div class="opt-sub">Acima do limite do art. 477, § 5º, CLT</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="rescisorio"> <div><div class="opt-label">❌ Não aplicável</div></div></label>
         </div>
@@ -2011,7 +2011,7 @@
 
       <div class="field-group">
         <label>O empregado interpôs recurso administrativo?</label>
-        <div class="options-grid cols-3" style="margin-top:6px;">
+        <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_recurso">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="recurso"> <div><div class="opt-label">✅ Sim, interpôs recurso</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="recurso"> <div><div class="opt-label">❌ Não interpôs recurso</div></div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="recurso"> <div><div class="opt-label">⏰ Prazo ainda em curso</div></div></label>
@@ -2849,7 +2849,7 @@
       <div class="comunicacao-titulo">Provas e Documentos Apresentados pelo Colaborador</div>
       <div class="field-group">
         <label>Tipo de prova/documento que está sendo apresentado <span class="hint">(marque os aplicáveis)</span></label>
-        <div class="options-grid cols-3" style="margin-top:8px;">
+        <div class="options-grid cols-3" style="margin-top:8px;" data-gid="grid_provasDI">
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">📷 Fotografias</div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">🎥 Vídeos</div></label>
           <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">💰 Orçamento Alternativo</div></label>
@@ -3056,17 +3056,16 @@
       const vt = document.getElementById(p + '_voto');
       data[p + '_voto'] = vt ? vt.value : '';
     });
-    // Salva textos dos registros por extenso de cada options-grid (por indice)
-    var gridTexts = [];
-    document.querySelectorAll('.options-grid').forEach(function(grid, i) {
+    // Salva textos dos registros por extenso — indexado por data-gid estável (não por posição)
+    var gridTexts = {};
+    document.querySelectorAll('.options-grid[data-gid]').forEach(function(grid) {
+      var gid = grid.dataset.gid;
       var rid = grid.dataset.rid;
       var div = rid ? document.getElementById(rid) : null;
-      gridTexts.push({
-        idx: i,
+      gridTexts[gid] = {
         text: div ? div.innerHTML : '',
-        display: div ? div.style.display : 'none',
-        hasRid: !!rid
-      });
+        display: div ? div.style.display : 'none'
+      };
     });
     data._gridTexts = gridTexts;
     // Status
@@ -3203,17 +3202,18 @@
     // Restaura registros por extenso de todas as opções marcadas (radio/checkbox)
     setTimeout(function() {
       // Se temos _gridTexts salvo, usa ele diretamente (mais confiavel)
-      var usarGridTexts = Array.isArray(data._gridTexts) && data._gridTexts.some(function(e){ return e && e.text && e.display !== 'none'; });
+      var usarGridTexts = data._gridTexts && (
+        (typeof data._gridTexts === 'object' && !Array.isArray(data._gridTexts) && Object.keys(data._gridTexts).some(function(k){ return data._gridTexts[k] && data._gridTexts[k].text && data._gridTexts[k].display !== 'none'; })) ||
+        (Array.isArray(data._gridTexts) && data._gridTexts.some(function(e){ return e && e.text && e.display !== 'none'; }))
+      );
       if (!usarGridTexts) {
         // Fallback: reconstrói a partir dos itens selecionados (processos antigos sem _gridTexts)
         document.querySelectorAll('.options-grid').forEach(function(grid) {
           const sel = [...grid.querySelectorAll('.opt-item.selected')];
           if (!sel.length) return;
-          let rid = grid.dataset.rid;
-          if (!rid) {
-            rid = 'reg_restore_' + Date.now() + '_' + Math.floor(Math.random()*9999);
-            grid.dataset.rid = rid;
-          }
+          var gid = grid.dataset.gid || ('fallback_' + Date.now() + '_' + Math.random().toString(36).slice(2,6));
+          var rid = 'reg_' + gid;
+          grid.dataset.rid = rid;
           let titulo = '';
           const parent = grid.closest('.field-group') || grid.closest('.field-row') || grid.parentElement;
           if (parent) {
@@ -3286,19 +3286,38 @@
           textoEl.style.display = 'block';
         }
       }
-      // Restaura textos dos registros por extenso das options-grids (por indice)
-      if (Array.isArray(data._gridTexts)) {
+      // Restaura textos dos registros por extenso das options-grids (por data-gid estável)
+      if (data._gridTexts && typeof data._gridTexts === 'object' && !Array.isArray(data._gridTexts)) {
+        // Novo formato: objeto indexado por data-gid
+        document.querySelectorAll('.options-grid[data-gid]').forEach(function(grid) {
+          var gid = grid.dataset.gid;
+          var entry = data._gridTexts[gid];
+          if (!entry || !entry.text || entry.display === 'none') return;
+          var rid = grid.dataset.rid;
+          if (!rid) {
+            rid = 'reg_' + gid;
+            grid.dataset.rid = rid;
+          }
+          var div = document.getElementById(rid);
+          if (!div) {
+            div = document.createElement('div');
+            div.id = rid;
+            div.style.cssText = 'margin:6px 0 14px;padding:8px 14px;background:rgba(13,27,42,0.05);border-left:3px solid var(--gold);border-radius:3px;font-size:12.5px;color:var(--navy);font-weight:500;line-height:1.6;';
+            grid.insertAdjacentElement('afterend', div);
+          }
+          div.innerHTML = entry.text;
+          div.style.display = entry.display || 'block';
+        });
+      } else if (Array.isArray(data._gridTexts)) {
+        // Formato legado (processos antigos salvos por índice) — usa posição
         var allGrids = document.querySelectorAll('.options-grid');
         data._gridTexts.forEach(function(entry) {
           if (!entry || !entry.text || entry.display === 'none') return;
           var grid = allGrids[entry.idx];
           if (!grid) return;
-          // Garante que o grid tem um rid
-          var rid = grid.dataset.rid;
-          if (!rid) {
-            rid = 'reg_restore_' + entry.idx + '_' + Date.now();
-            grid.dataset.rid = rid;
-          }
+          var gid = grid.dataset.gid || ('legacy_' + entry.idx);
+          var rid = 'reg_' + gid;
+          grid.dataset.rid = rid;
           var div = document.getElementById(rid);
           if (!div) {
             div = document.createElement('div');
