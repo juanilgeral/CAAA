@@ -3333,39 +3333,88 @@
   }
 
   // ---- Coleta registros por extenso de todas as selecoes visiveis ----
-  function coletarRegistrosPorExtenso() {
+  // ---- Gera registros por extenso a partir dos dados brutos (independente do DOM visual) ----
+  function coletarRegistrosPorExtenso(data) {
+    // Se chamado sem argumento, usa o estado atual do DOM via collectFormData
+    if (!data) data = collectFormData();
+
     const regs = [];
-    // Divs de registro criados pelo toggleOpt (data-rid)
-    document.querySelectorAll('.options-grid[data-rid]').forEach(function(grid) {
-      const rid = grid.dataset.rid;
-      const div = document.getElementById(rid);
-      if (div && div.style.display !== 'none' && div.textContent.trim()) {
-        regs.push(div.textContent.trim().replace(/^✔️\s*/,''));
-      }
+    const VMAP = {
+      'sem_culpa': 'Sem Culpa / Dolo',
+      'culpa':     'Culpa Comprovada',
+      'dolo':      'Dolo Comprovado'
+    };
+    const DECISAO_MAP = {
+      'sem_culpa': 'Sem Culpa / Dolo — Isenção Total',
+      'culpa':     'Culpa — Responsabilidade Parcial',
+      'dolo':      'Dolo — Responsabilidade Integral'
+    };
+    const RADIO_LABELS = {
+      comunicou:     { sim: 'Empregado comunicou o fato: Sim', nao: 'Empregado comunicou o fato: Não' },
+      instaurar:     { sim: 'Deliberou pela instauração: Sim', nao: 'Deliberou pela instauração: Não' },
+      compareceu:    { sim: 'Compareceu à reunião: Sim', nao: 'Não compareceu sem justificativa', justificou: 'Justificou ausência' },
+      falhaManu:     { sim: 'Falha de manutenção: Sim (desconto vedado)', parcial: 'Falha parcial — mitigar penalidade', nao: 'Bem em boas condições' },
+      solicitouPrazo:{ sim: 'Solicitou prazo para contraprovas: Sim', nao: 'Não solicitou prazo', negado: 'Solicitou, mas negado' },
+      gravada:       { sim: 'Reunião gravada: Sim, com consentimento', nao: 'Não gravada — ata detalhada lavrada' },
+      haDesconto:    { sim: 'Desconto salarial: Sim', nao: 'Desconto salarial: Não' },
+      rescisorio:    { sim: 'Desconto em haveres rescisórios: Sim', nao: 'Desconto em rescisórios: Não aplicável' },
+      recurso:       { sim: 'Recurso administrativo: Interposto', nao: 'Recurso administrativo: Não interposto', prazo: 'Recurso: Prazo em curso' },
+      haTerceiro:    { sim: 'Terceiro envolvido: Sim', nao: 'Terceiro envolvido: Não' },
+      haVitimas:     { sim: 'Houve vítimas/feridos: Sim', nao: 'Houve vítimas/feridos: Não' },
+      penalidade:    { advertencia: 'Penalidade: Advertência', suspensao: 'Penalidade: Suspensão', justa_causa: 'Penalidade: Justa Causa', desconto: 'Penalidade: Apenas Desconto' },
+      formaNotif:    { recibo: 'Notificação: Recibo Assinado', recusa: 'Notificação: Recusa c/ Testemunhas', outro: 'Notificação: Outro Meio' },
+      modalDefesa:   { escrita: 'Defesa: Escrita pelo empregado', termo: 'Defesa: Reduzida a termo', sem: 'Defesa: Não apresentou' }
+    };
+
+    // Radios
+    Object.keys(RADIO_LABELS).forEach(function(name) {
+      var val = data['radio_' + name];
+      if (val && RADIO_LABELS[name][val]) regs.push(RADIO_LABELS[name][val]);
     });
-    // Decision cards (sec4 - decisao coletiva)
-    const dc = document.querySelector('#sec4 .decision-card.selected-card');
-    if (dc) {
-      const t = dc.querySelector('.dc-title'), s = dc.querySelector('.dc-sub');
-      regs.push('Decisao Coletiva: ' + (t ? t.textContent.trim() : '') + (s ? ' — ' + s.textContent.trim() : ''));
+
+    // Provas da empresa (named checkbox)
+    if (data['check_provas']) {
+      regs.push('Provas coletadas: ' + data['check_provas'].split('|').map(function(s){ return s.trim(); }).join(', '));
     }
+
+    // Decisão coletiva (sec4)
+    if (data['decisaoTipo'] && DECISAO_MAP[data['decisaoTipo']]) {
+      regs.push('Decisão Coletiva: ' + DECISAO_MAP[data['decisaoTipo']]);
+    }
+
     // Votos formParecer
-    const VMAP = {'sem_culpa':'Sem Culpa/Dolo','culpa':'Culpa Comprovada','dolo':'Dolo Comprovado'};
     ['p1','p2','p3','p4'].forEach(function(p, i) {
-      const h = document.getElementById(p + 'voto');
-      if (h && h.value) regs.push('Voto Membro ' + (i+1) + ': ' + (VMAP[h.value] || h.value));
+      var val = data[p + 'voto'];
+      if (val && VMAP[val]) regs.push('Voto Membro ' + (i+1) + ': ' + VMAP[val]);
     });
-    // Votos formDecisaoIndividual
+
+    // Votos Decisão Individual
     ['di1','di2','di3','di4'].forEach(function(p, i) {
-      const h = document.getElementById(p + '_voto');
-      if (h && h.value) regs.push('Decisao Individual Membro ' + (i+1) + ': ' + (VMAP[h.value] || h.value));
+      var val = data[p + '_voto'];
+      if (val && VMAP[val]) regs.push('Decisão Individual Membro ' + (i+1) + ': ' + VMAP[val]);
     });
-    // Decision cards formComunicacao
-    const fc = document.querySelector('#formComunicacao .decision-card.selected-card');
-    if (fc) {
-      const t = fc.querySelector('.dc-title');
-      regs.push('Comunicacao da Decisao: ' + (t ? t.textContent.trim() : ''));
+
+    // Decisão Comunicação da CAAA
+    if (data['fc_decisao'] && DECISAO_MAP[data['fc_decisao']]) {
+      regs.push('Comunicação da Decisão: ' + DECISAO_MAP[data['fc_decisao']]);
     }
+    if (data['fc_penalidade']) regs.push('Penalidade comunicada: ' + data['fc_penalidade']);
+
+    // Campos textuais relevantes
+    var camposTexto = [
+      ['nomeEmp',       'Empregado'],
+      ['numProc',       'Nº Processo'],
+      ['placaBem',      'Placa/Bem'],
+      ['dataInst',      'Data de Instauração'],
+      ['valorDano',     'Valor do Dano (R$)'],
+      ['numParcelas',   'Nº de Parcelas'],
+      ['suspDias',      'Dias de Suspensão'],
+    ];
+    camposTexto.forEach(function(pair) {
+      var v = data[pair[0]];
+      if (v && String(v).trim()) regs.push(pair[1] + ': ' + String(v).trim());
+    });
+
     return regs;
   }
 
@@ -3513,8 +3562,8 @@
       const dup = await checkNumProcDuplicado(data.numProc, null);
       if (dup) { mostrarErroDuplicata(true); showSaveIndicator('⛔ Numero duplicado — NAO salvo'); return; }
     }
-    // Anexa registros por extenso ao objeto salvo
-    data.registrosPorExtenso = coletarRegistrosPorExtenso();
+    // Anexa registros por extenso calculados a partir dos dados brutos (não do DOM visual)
+    data.registrosPorExtenso = coletarRegistrosPorExtenso(data);
     if (currentId) data.id = currentId;
     return new Promise((resolve) => {
       try {
@@ -3690,13 +3739,20 @@
       const detId = 'det_' + r.id;
 
       const regs = Array.isArray(r.registrosPorExtenso) ? r.registrosPorExtenso : [];
+
+      // Filtra para mostrar apenas decisões e campos relevantes (não dados de identificação duplicados)
+      const SKIP_PREFIXES = ['Empregado:', 'Nº Processo:', 'Placa/Bem:', 'Data de Instauração:'];
+      const decisoes = regs.filter(function(reg) {
+        return !SKIP_PREFIXES.some(function(p){ return reg.startsWith(p); });
+      });
+
       let regsHTML;
-      if (regs.length) {
-        regsHTML = '<ul style="margin:8px 0 0;padding-left:20px;list-style:disc;font-size:12.5px;line-height:1.9;color:#1a1a2e;">'
-          + regs.map(function(reg){ return '<li>' + reg + '</li>'; }).join('')
+      if (decisoes.length) {
+        regsHTML = '<ul style="margin:8px 0 0;padding-left:20px;list-style:disc;font-size:12.5px;line-height:2;color:#1a1a2e;">'
+          + decisoes.map(function(reg){ return '<li>' + reg + '</li>'; }).join('')
           + '</ul>';
       } else {
-        regsHTML = '<em style="color:#6b6b8a;font-size:12px;">Nenhuma sele&#231;&#227;o registrada. Fa&#231;a sele&#231;&#245;es e salve o processo.</em>';
+        regsHTML = '<em style="color:#6b6b8a;font-size:12px;">Nenhuma decisão registrada. Preencha e salve o processo.</em>';
       }
 
       const detailRow = '<tr id="' + detId + '" style="display:none;">'
@@ -4379,6 +4435,9 @@
         const novo = Object.assign({}, recs[idx]);
         delete novo.id; // deixa o IndexedDB gerar novo ID — evita conflito
         novo.updatedAt = novo.updatedAt || new Date().toISOString();
+        // Recalcula registrosPorExtenso a partir dos dados brutos do JSON
+        // Garante que decisões apareçam mesmo em arquivos exportados por versão antiga
+        novo.registrosPorExtenso = coletarRegistrosPorExtenso(novo);
 
         const tx = db.transaction(STORE, 'readwrite');
         const req = tx.objectStore(STORE).add(novo);
