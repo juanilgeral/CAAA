@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório Completo CAAA - JUANIL</title>
+    <title>Relatório CAAA - JUANIL</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 25px; background: #f4f6f9; line-height: 1.55; }
-        .container { max-width: 1300px; margin: auto; background: white; padding: 40px; box-shadow: 0 0 25px rgba(0,0,0,0.15); }
+        body { font-family: Arial, sans-serif; margin: 25px; background: #f4f6f9; line-height: 1.6; }
+        .container { max-width: 1350px; margin: auto; background: white; padding: 40px; box-shadow: 0 0 25px rgba(0,0,0,0.15); }
         header { text-align: center; border-bottom: 5px solid #003366; padding-bottom: 25px; margin-bottom: 30px; }
         .logo { max-width: 320px; }
         h1, h2 { color: #003366; }
-        h2 { border-bottom: 2px solid #003366; padding-bottom: 8px; }
-        label { font-weight: bold; display: block; margin: 15px 0 6px; }
+        h2 { border-bottom: 2px solid #003366; padding-bottom: 10px; margin-top: 35px; }
+        label { font-weight: bold; display: block; margin: 12px 0 6px; }
         input, textarea, select { width: 100%; padding: 10px; border: 1px solid #666; border-radius: 5px; box-sizing: border-box; font-size: 15px; }
         .group { display: flex; gap: 20px; flex-wrap: wrap; }
         .radio-group, .checkbox-group { display: flex; gap: 18px; flex-wrap: wrap; margin: 12px 0; }
@@ -22,9 +22,14 @@
         .btn-primary { background: #003366; color: white; }
         .btn-success { background: #006600; color: white; }
         .btn-danger { background: #990000; color: white; }
-        .folha-separada { page-break-before: always; border: 3px double #003366; padding: 40px; margin-top: 40px; }
+        .folha-separada { 
+            page-break-before: always; 
+            border: 4px double #003366; 
+            padding: 50px; 
+            margin-top: 50px; 
+            min-height: 90vh;
+        }
         @media print {
-            body { background: white; }
             button { display: none !important; }
             .folha-separada { box-shadow: none; }
         }
@@ -36,7 +41,7 @@
         <img src="https://i.imgur.com/0zX5vL2.png" alt="Logo JUANIL" class="logo">
         <h1>RELATÓRIO CONCLUSIVO DE APURAÇÃO DE DOLO OU CULPA</h1>
         <p><strong>Comissão de Apuração de Acidentes e Avarias (CAAA)</strong><br>
-        Procedimento Administrativo Padrão – TAC com o Ministério Público do Trabalho</p>
+        Procedimento Administrativo Padrão – TAC / Ministério Público do Trabalho</p>
     </header>
 
     <h2>1. Identificação do Procedimento</h2>
@@ -46,7 +51,7 @@
         <div style="flex:1;"><label>Data da Instauração:</label><input type="date" id="dataInstauracao"></div>
     </div>
 
-    <h2>2. Dados do Empregado</h2>
+    <h2>2. Dados do Empregado Envolvido</h2>
     <div class="group">
         <div style="flex:1;"><label>Nome Completo:</label><input type="text" id="nomeEmpregado"></div>
         <div style="flex:1;"><label>Função:</label><input type="text" id="funcao"></div>
@@ -54,14 +59,14 @@
     </div>
 
     <h2>3. Descrição da Ocorrência</h2>
-    <label>Tipo:</label>
+    <label>Tipo de Ocorrência:</label>
     <div class="radio-group">
         <label><input type="radio" name="tipo" value="Acidente"> Acidente de Trânsito</label>
-        <label><input type="radio" name="tipo" value="Avaria"> Avaria / Dano ao Veículo</label>
-        <label><input type="radio" name="tipo" value="DanoTerceiros"> Dano a Terceiros</label>
+        <label><input type="radio" name="tipo" value="Avaria"> Avaria / Dano ao Veículo ou Equipamento</label>
+        <label><input type="radio" name="tipo" value="DanoTerceiros"> Dano a Bens de Terceiros</label>
         <label><input type="radio" name="tipo" value="Multa"> Multa de Trânsito</label>
     </div>
-    <label>Descrição Detalhada:</label>
+    <label>Descrição Detalhada dos Fatos:</label>
     <textarea id="descricaoFato" rows="7"></textarea>
 
     <div class="group">
@@ -72,50 +77,49 @@
 
     <h2>4. Defesa e Manifestação do Empregado</h2>
     <div class="checkbox-group">
-        <label><input type="checkbox" id="notificado"> Notificado por escrito</label>
+        <label><input type="checkbox" id="notificado"> Empregado notificado por escrito</label>
         <label><input type="checkbox" id="defesa"> Defesa apresentada</label>
         <label><input type="checkbox" id="acesso"> Acesso aos autos concedido</label>
     </div>
-    <label>Questionamentos, Manifestação e Contraprovas do Empregado (registrar tudo):</label>
-    <textarea id="manifestacaoEmpregado" rows="9" placeholder="Registrar aqui todos os questionamentos, impugnações, provas e argumentos do empregado..."></textarea>
-    <h2>5. Votação Individual dos Membros da CAAA</h2>
-    <p><strong>Cada membro deve registrar seu voto por extenso e fundamentá-lo. Decisão por maioria simples.</strong></p>
+    <label>Questionamentos, Manifestação e Contraprovas do Empregado:</label>
+    <textarea id="manifestacaoEmpregado" rows="8"></textarea>
 
+    <h2>5. Votação Individual dos Membros da CAAA</h2>
     <table>
         <thead>
             <tr>
                 <th>Nome do Membro</th>
                 <th>Função</th>
-                <th>Mesma função do Empregado?</th>
+                <th>Mesma função?</th>
                 <th>Voto</th>
                 <th>Fundamentação do Voto (por extenso)</th>
                 <th>Data / Assinatura</th>
             </tr>
         </thead>
         <tbody>
-            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text" placeholder="Dolo / Culpa / Sem Culpa / Falha Empresa"></td><td><textarea rows="5" style="width:100%;"></textarea></td><td><input type="date"></td></tr>
-            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text"></td><td><textarea rows="5" style="width:100%;"></textarea></td><td><input type="date"></td></tr>
-            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text"></td><td><textarea rows="5" style="width:100%;"></textarea></td><td><input type="date"></td></tr>
-            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text"></td><td><textarea rows="5" style="width:100%;"></textarea></td><td><input type="date"></td></tr>
+            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text"></td><td><textarea rows="4" style="width:100%"></textarea></td><td><input type="date"></td></tr>
+            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text"></td><td><textarea rows="4" style="width:100%"></textarea></td><td><input type="date"></td></tr>
+            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text"></td><td><textarea rows="4" style="width:100%"></textarea></td><td><input type="date"></td></tr>
+            <tr><td><input type="text"></td><td><input type="text"></td><td><select><option>Sim</option><option>Não</option></select></td><td><input type="text"></td><td><textarea rows="4" style="width:100%"></textarea></td><td><input type="date"></td></tr>
         </tbody>
     </table>
 
-    <h2>6. Decisão Final da Comissão (por maioria)</h2>
+    <h2>6. Decisão Final da CAAA</h2>
     <div class="radio-group">
         <label><input type="radio" name="conclusao" value="Dolo"> DOLO configurado</label>
         <label><input type="radio" name="conclusao" value="Culpa"> CULPA configurada</label>
         <label><input type="radio" name="conclusao" value="Sem"> Sem Dolo ou Culpa (Arquivar)</label>
-        <label><input type="radio" name="conclusao" value="Empresa"> Falha de manutenção da empresa</label>
+        <label><input type="radio" name="conclusao" value="Empresa"> Falha da Empresa (Manutenção)</label>
     </div>
 
     <label>Fundamentação Completa da Decisão:</label>
     <textarea id="fundamentacao" rows="10"></textarea>
 
     <div class="group">
-        <div style="flex:1;"><label>Valor do Desconto Recomendado (R$):</label><input type="number" id="valorDesconto" step="0.01"></div>
-        <div style="flex:1;"><label>Penalidade Recomendada:</label>
+        <div style="flex:1;"><label>Valor Recomendado para Desconto (R$):</label><input type="number" id="valorDesconto" step="0.01"></div>
+        <div style="flex:1;"><label>Penalidade Disciplinar:</label>
             <select id="penalidade">
-                <option value="">Selecione</option>
+                <option value="">Selecione...</option>
                 <option value="Advertencia">Advertência</option>
                 <option value="Suspensao">Suspensão</option>
                 <option value="JustaCausa">Justa Causa</option>
@@ -123,75 +127,137 @@
             </select>
         </div>
     </div>
-    <!-- FOLHA SEPARADA PARA IMPRESSÃO - VOTAÇÃO INDIVIDUAL -->
+
+    <!-- FOLHA SEPARADA - VOTO INDIVIDUAL -->
     <div class="folha-separada">
-        <h2 style="text-align:center;">FOLHA DE VOTO INDIVIDUAL - CAAA</h2>
-        <p><strong>Processo nº:</strong> <span id="numProcPrint1"></span></p>
-        <p><strong>Empregado:</strong> <span id="nomePrint1"></span></p>
-        <label>Nome do Membro:</label><input type="text" style="margin-bottom:15px;">
-        <label>Voto:</label><input type="text" placeholder="Dolo / Culpa / Sem Responsabilidade / Outros" style="margin-bottom:15px;">
-        <label>Fundamentação do Voto (registrar por extenso):</label>
-        <textarea rows="18" style="width:100%;"></textarea>
-        <p style="margin-top:40px;">Data: ____/____/______ &nbsp;&nbsp;&nbsp; Assinatura: ____________________________________</p>
+        <h2 style="text-align:center;">FOLHA DE VOTO INDIVIDUAL DA CAAA</h2>
+        <p><strong>Processo:</strong> <span id="numProc1"></span> | <strong>Empregado:</strong> <span id="nome1"></span></p>
+        <label>Nome do Membro:</label><input type="text" style="margin-bottom:20px;">
+        <label>Voto:</label><input type="text" placeholder="Dolo / Culpa / Sem Culpa / Falha da Empresa" style="margin-bottom:20px;">
+        <label>Fundamentação do Voto (escreva por extenso):</label>
+        <textarea rows="22" style="width:100%;"></textarea>
+        <p style="margin-top:50px;">Data: ____/____/______ &nbsp;&nbsp;&nbsp;&nbsp; Assinatura: ________________________________________</p>
     </div>
 
-    <!-- FOLHA SEPARADA PARA IMPRESSÃO - NOTIFICAÇÃO AO EMPREGADO -->
+    <!-- FOLHA SEPARADA - NOTIFICAÇÃO AO EMPREGADO -->
     <div class="folha-separada">
-        <h2 style="text-align:center;">TERMO DE NOTIFICAÇÃO DA DECISÃO AO EMPREGADO</h2>
-        <p><strong>Processo nº:</strong> <span id="numProcPrint2"></span></p>
-        <p>Prezado(a) <strong><span id="nomePrint2"></span></strong>,</p>
-        <p>Informamos que a Comissão de Apuração de Acidentes e Avarias (CAAA) concluiu o procedimento administrativo nº <span id="numProcPrint3"></span>, e a decisão final foi proferida em <input type="date" id="dataNotif">.</p>
-        <p>Você recebeu uma cópia integral do Relatório Conclusivo.</p>
-        
-        <div style="margin:40px 0; border:2px solid #000; padding:20px;">
+        <h2 style="text-align:center;">TERMO DE NOTIFICAÇÃO E ENTREGA DA DECISÃO AO EMPREGADO</h2>
+        <p><strong>Processo nº:</strong> <span id="numProc2"></span></p>
+        <p>Prezado(a) <strong><span id="nome2"></span></strong>,</p>
+        <p>A CAAA concluiu a apuração do processo acima e a decisão foi proferida.</p>
+        <p>Você recebeu neste ato uma cópia integral do Relatório Conclusivo.</p>
+
+        <div style="border: 3px solid #000; padding: 30px; margin: 40px 0;">
             <strong>RECIBO DE ENTREGA</strong><br><br>
-            Recebi cópia do Relatório Conclusivo da Decisão da CAAA.<br><br>
-            Data: ____/____/______<br>
+            Declaro ter recebido cópia do Relatório Conclusivo da Decisão da CAAA.<br><br>
+            Data: ____/____/______<br><br>
             Assinatura do Empregado: ____________________________________________<br><br>
-            Caso de recusa: Testemunhas:<br>
-            1. ____________________________________________ &nbsp;&nbsp; 2. ____________________________________________
+            Em caso de recusa:<br>
+            Testemunha 1: ________________________________ &nbsp;&nbsp; Testemunha 2: ________________________________
         </div>
-        <p>Observações:</p>
+
+        <label>Observações sobre a Notificação:</label>
         <textarea rows="6" style="width:100%;"></textarea>
     </div>
 
-    <div style="text-align:center; margin:60px 0;">
-        <button onclick="salvarRelatorio()" class="btn-primary">💾 Salvar Relatório Completo</button>
-        <button onclick="carregarRelatorio()" class="btn-success">📂 Carregar</button>
-        <button onclick="window.print()" class="btn-primary">🖨️ Imprimir Tudo</button>
-        <button onclick="limparFormulario()" class="btn-danger">🗑️ Limpar</button>
+    <div style="text-align:center; margin: 70px 0;">
+        <button onclick="salvarComoJSON()" class="btn-primary">💾 Salvar como Arquivo JSON</button>
+        <button onclick="document.getElementById('fileInput').click()" class="btn-success">📂 Carregar Arquivo JSON</button>
+        <input type="file" id="fileInput" accept=".json" style="display:none;" onchange="carregarArquivo(event)">
+        <button onclick="window.print()" class="btn-primary">🖨️ Imprimir Tudo (inclui folhas separadas)</button>
+        <button onclick="limparFormulario()" class="btn-danger">🗑️ Limpar Formulário</button>
     </div>
 </div>
 
 <script>
-    function atualizarPrint() {
-        document.getElementById('numProcPrint1').textContent = 
-        document.getElementById('numProcPrint2').textContent = 
-        document.getElementById('numProcPrint3').textContent = document.getElementById('numProcedimento').value || 'CAAA-0001/2026';
+    function atualizarCamposImpressao() {
+        const num = document.getElementById('numProcedimento').value || 'CAAA-0001/2026';
+        const nome = document.getElementById('nomeEmpregado').value || '[Nome do Empregado]';
+        document.getElementById('numProc1').textContent = num;
+        document.getElementById('numProc2').textContent = num;
+        document.getElementById('nome1').textContent = nome;
+        document.getElementById('nome2').textContent = nome;
+    }
+
+    document.getElementById('numProcedimento').addEventListener('input', atualizarCamposImpressao);
+    document.getElementById('nomeEmpregado').addEventListener('input', atualizarCamposImpressao);
+
+    function getFormData() {
+        return {
+            numProcedimento: document.getElementById('numProcedimento').value,
+            dataOcorrencia: document.getElementById('dataOcorrencia').value,
+            dataInstauracao: document.getElementById('dataInstauracao').value,
+            nomeEmpregado: document.getElementById('nomeEmpregado').value,
+            funcao: document.getElementById('funcao').value,
+            matricula: document.getElementById('matricula').value,
+            tipo: document.querySelector('input[name="tipo"]:checked')?.value || '',
+            descricaoFato: document.getElementById('descricaoFato').value,
+            local: document.getElementById('local').value,
+            veiculo: document.getElementById('veiculo').value,
+            valorDano: document.getElementById('valorDano').value,
+            manifestacaoEmpregado: document.getElementById('manifestacaoEmpregado').value,
+            fundamentacao: document.getElementById('fundamentacao').value,
+            valorDesconto: document.getElementById('valorDesconto').value,
+            penalidade: document.getElementById('penalidade').value,
+            conclusao: document.querySelector('input[name="conclusao"]:checked')?.value || ''
+        };
+    }
+
+    function salvarComoJSON() {
+        const dados = getFormData();
+        const nomeArquivo = (dados.numProcedimento || 'CAAA-sem-numero').replace(/[^a-zA-Z0-9]/g, '-') + '.json';
         
-        document.getElementById('nomePrint1').textContent = 
-        document.getElementById('nomePrint2').textContent = document.getElementById('nomeEmpregado').value || '[Nome do Empregado]';
+        const blob = new Blob([JSON.stringify(dados, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nomeArquivo;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        alert(`Arquivo salvo como:\n${nomeArquivo}\n\nGuarde em uma pasta organizada no seu computador.`);
     }
 
-    // Atualiza campos de impressão ao digitar
-    document.getElementById('numProcedimento').addEventListener('input', atualizarPrint);
-    document.getElementById('nomeEmpregado').addEventListener('input', atualizarPrint);
+    function carregarArquivo(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-    function salvarRelatorio() {
-        alert('✅ Relatório salvo no navegador (localStorage). Use "Carregar" na próxima vez.');
-        // Implementação completa de salvar todos os campos pode ser expandida se necessário
-    }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const dados = JSON.parse(e.target.result);
+                Object.keys(dados).forEach(key => {
+                    const el = document.getElementById(key);
+                    if (el) el.value = dados[key];
+                });
 
-    function carregarRelatorio() {
-        alert('✅ Relatório carregado (funcionalidade básica ativada).');
+                // Radios
+                if (dados.tipo) {
+                    const radioTipo = document.querySelector(`input[name="tipo"][value="${dados.tipo}"]`);
+                    if (radioTipo) radioTipo.checked = true;
+                }
+                if (dados.conclusao) {
+                    const radioConc = document.querySelector(`input[name="conclusao"][value="${dados.conclusao}"]`);
+                    if (radioConc) radioConc.checked = true;
+                }
+
+                atualizarCamposImpressao();
+                alert(`✅ Processo carregado com sucesso!\n${file.name}`);
+            } catch (err) {
+                alert("❌ Erro ao carregar o arquivo. Verifique se é um JSON válido.");
+            }
+        };
+        reader.readAsText(file);
     }
 
     function limparFormulario() {
-        if (confirm('Limpar todo o formulário?')) location.reload();
+        if (confirm("Limpar todo o formulário?")) {
+            location.reload();
+        }
     }
 
-    // Inicializa
-    atualizarPrint();
+    // Inicializa campos de impressão
+    atualizarCamposImpressao();
 </script>
 </body>
 </html>
