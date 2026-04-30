@@ -3633,8 +3633,17 @@
       const req = store.getAll();
       req.onsuccess = e => {
         let all = e.target.result || [];
-        // Sort newest first
-        all.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        // Ordena por número do processo em ordem crescente (natural sort)
+        all.sort((a, b) => {
+          const na = (a.numProc || '').trim();
+          const nb = (b.numProc || '').trim();
+          // Processos sem número vão para o final
+          if (!na && !nb) return new Date(b.updatedAt) - new Date(a.updatedAt);
+          if (!na) return 1;
+          if (!nb) return -1;
+          // Natural sort: separa partes numéricas das textuais
+          return na.localeCompare(nb, 'pt-BR', { numeric: true, sensitivity: 'base' });
+        });
         if (q) {
           all = all.filter(r =>
             (r.numProc||'').toLowerCase().includes(q) ||
