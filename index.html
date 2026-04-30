@@ -2755,8 +2755,8 @@
 
       <div class="field-row" style="margin-bottom:0;">
         <div>
-          <label>Resumo da Decisão e Fundamentação <span class="hint">(escreva à mão ou digite)</span></label>
-          <textarea class="handwrite-area" rows="6" placeholder="Descreva de forma clara o resultado da apuração, os fatos comprovados e a fundamentação legal da decisão. Este resumo será entregue ao empregado."></textarea>
+          <label>Resumo da Decisão e Fundamentação <span class="hint">(preenchido automaticamente a partir da Seção 5 — pode ser editado)</span></label>
+          <textarea class="handwrite-area" id="fc_resumoDecisao" rows="6" placeholder="Preenchido automaticamente a partir do campo 'Resumo dos Fatos Apurados' da Seção 5. Você pode editar este texto livremente."></textarea>
         </div>
       </div>
     </div>
@@ -3183,6 +3183,11 @@
     if (rem) document.getElementById('limiteDesc').value = (rem * 0.4).toFixed(2);
     // Re-sync all standalone forms after restore
     setTimeout(() => syncAllFromSection1(), 200);
+    // Atualiza o lastSynced do fc_resumoDecisao para rastrear edições manuais pós-restore
+    setTimeout(function() {
+      const dest = document.getElementById('fc_resumoDecisao');
+      if (dest) dest.dataset.lastSynced = dest.value;
+    }, 250);
     // Recalcula a tabela de parcelas automaticamente com os valores restaurados
     setTimeout(function() {
       calcParcelas();
@@ -4049,6 +4054,7 @@
     'supervisor':   [],
     'local':        [{id:'fd_local',   t:'val'}],
     'valorOrcamento':[{id:'fd_valorEmpresa',t:'val'}],
+    'resumoFatos':   [{id:'fc_resumoDecisao', t:'val'}],
   };
 
   let syncDebounce = null;
@@ -4094,6 +4100,17 @@
     ['pf_dataInst','di_dataInst','fc_dataInst','fd_dataInst'].forEach(id => {
       const el = document.getElementById(id); if(el) el.textContent = diText;
     });
+    // Sincronização especial: resumoFatos → fc_resumoDecisao (ao navegar entre seções)
+    const resumoEl = document.getElementById('resumoFatos');
+    const fcResumoEl = document.getElementById('fc_resumoDecisao');
+    if (resumoEl && fcResumoEl) {
+      const lastSynced = fcResumoEl.dataset.lastSynced || '';
+      if (!fcResumoEl.value.trim() || fcResumoEl.value === lastSynced) {
+        fcResumoEl.value = resumoEl.value;
+        fcResumoEl.dataset.lastSynced = resumoEl.value;
+        if (resumoEl.value) { flashField('fc_resumoDecisao'); syncedFields.add('resumoFatos'); }
+      }
+    }
     if (syncedFields.size > 0) showAutocompleteToast();
   }
 
@@ -4106,6 +4123,22 @@
     if (SYNC_MAP[e.target.id] !== undefined) {
       clearTimeout(syncDebounce);
       syncDebounce = setTimeout(() => syncField(e.target.id, e.target.value), 600);
+    }
+    // Sincronização especial: resumoFatos → fc_resumoDecisao
+    // Só preenche automaticamente se o campo destino estiver vazio
+    // ou igual ao valor anterior do resumoFatos (usuário não editou manualmente)
+    if (e.target.id === 'resumoFatos') {
+      const dest = document.getElementById('fc_resumoDecisao');
+      if (dest) {
+        const lastSynced = dest.dataset.lastSynced || '';
+        if (!dest.value.trim() || dest.value === lastSynced) {
+          dest.value = e.target.value;
+          dest.dataset.lastSynced = e.target.value;
+          dest.classList.remove('sync-flash');
+          void dest.offsetWidth;
+          dest.classList.add('sync-flash');
+        }
+      }
     }
     if (e.target.id === 'nomeEmp') {
       ['pf_nomeEmp','di_nomeEmp'].forEach(id => {
