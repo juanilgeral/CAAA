@@ -434,13 +434,60 @@
   .opt-item:hover { border-color: var(--navy-light); background: #fafbfc; }
   .opt-item input[type="radio"],
   .opt-item input[type="checkbox"] {
-    width: 14px; height: 14px;
-    min-width: 14px;
-    margin-top: 1px;
-    accent-color: var(--navy);
+    /* Aparência nativa removida — visual customizado */
+    -webkit-appearance: none;
+    appearance: none;
+    pointer-events: none;
+    width: 20px; height: 20px;
+    min-width: 20px;
+    border: 2px solid #b0a898;
+    border-radius: 3px;
+    background: #fff;
     cursor: pointer;
+    position: relative;
+    flex-shrink: 0;
+    margin-top: 0;
+    transition: border-color 0.15s, background 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
-  .opt-item.selected { border-color: var(--navy); background: rgba(13,27,42,0.04); }
+  .opt-item input[type="radio"] { border-radius: 50%; }
+
+  /* Checkbox marcado: fundo amarelo + X */
+  .opt-item input[type="checkbox"]:checked {
+    border-color: var(--navy);
+    background: #fff9c4;
+  }
+  .opt-item input[type="checkbox"]:checked::after {
+    content: '✕';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--navy);
+    line-height: 1;
+  }
+  /* Radio marcado: fundo amarelo + ponto */
+  .opt-item input[type="radio"]:checked {
+    border-color: var(--navy);
+    background: #fff9c4;
+  }
+  .opt-item input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    width: 9px; height: 9px;
+    background: var(--navy);
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+  /* Item selecionado — fundo amarelo no container todo */
+  .opt-item.selected {
+    border-color: var(--navy);
+    background: #fffde7;
+  }
   .opt-item .opt-label { font-size: 12px; line-height: 1.4; color: var(--text); }
   .opt-item .opt-sub { font-size: 10.5px; color: var(--text-light); margin-top: 1px; }
 
@@ -574,7 +621,20 @@
     text-align: left;
   }
   .decision-card:hover { border-color: var(--navy-light); }
-  .decision-card.selected-card { border-color: var(--navy); background: rgba(13,27,42,0.04); }
+  .decision-card.selected-card {
+    border-color: var(--navy);
+    background: #fffde7;
+    position: relative;
+  }
+  .decision-card.selected-card::before {
+    content: '✕';
+    position: absolute;
+    top: 4px; right: 7px;
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--navy);
+    line-height: 1;
+  }
   .decision-card .dc-icon { font-size: 13px; flex-shrink: 0; margin-bottom: 0; }
   .decision-card .dc-title { font-weight: 600; font-size: 11px; margin-bottom: 0; line-height: 1.3; }
   .decision-card .dc-sub { font-size: 9.5px; color: var(--text-light); line-height: 1.25; }
@@ -674,7 +734,18 @@
     line-height: 1.4;
   }
   .voto-opt:hover { border-color: var(--navy-light); }
-  .voto-opt.voto-selected { border-color: var(--navy); background: rgba(13,27,42,0.05); font-weight: 600; }
+  .voto-opt.voto-selected {
+    border-color: var(--navy);
+    background: #fffde7;
+    font-weight: 600;
+    position: relative;
+  }
+  .voto-opt.voto-selected::after {
+    content: ' ✕';
+    font-size: 11px;
+    font-weight: 900;
+    color: var(--navy);
+  }
   .handwrite-area {
     width: 100%;
     background: repeating-linear-gradient(
@@ -1233,10 +1304,10 @@
       <div class="field-group">
         <label>Há terceiro envolvido?</label>
         <div class="options-grid cols-2" style="margin-top:6px;max-width:360px;" data-gid="grid_haTerceiro">
-          <label class="opt-item" onclick="toggleOpt(this);toggleTerceiro(true)">
+          <label class="opt-item" onclick="toggleOpt(this);toggleTerceiro(true);return false;">
             <input type="radio" name="haTerceiro" value="sim"> <div class="opt-label">✅ Sim</div>
           </label>
-          <label class="opt-item selected" onclick="toggleOpt(this);toggleTerceiro(false)">
+          <label class="opt-item selected" onclick="toggleOpt(this);toggleTerceiro(false);return false;">
             <input type="radio" name="haTerceiro" value="nao" checked> <div class="opt-label">❌ Não</div>
           </label>
         </div>
@@ -1372,8 +1443,8 @@
           <div>
             <label>Houve vítimas / feridos?</label>
             <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_haVitimas">
-              <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haVitimas"> <div class="opt-label">✅ Sim</div></label>
-              <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haVitimas"> <div class="opt-label">❌ Não</div></label>
+              <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="haVitimas"> <div class="opt-label">✅ Sim</div></label>
+              <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="haVitimas"> <div class="opt-label">❌ Não</div></label>
             </div>
           </div>
           <div>
@@ -1505,8 +1576,8 @@
         <div>
           <label>O empregado comunicou o fato imediatamente? <span class="req">*</span></label>
           <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_comunicou">
-            <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="comunicou" value="sim"> <div><div class="opt-label">✅ Sim</div></div></label>
-            <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="comunicou" value="nao"> <div><div class="opt-label">❌ Não</div></div></label>
+            <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="comunicou" value="sim"> <div><div class="opt-label">✅ Sim</div></div></label>
+            <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="comunicou" value="nao"> <div><div class="opt-label">❌ Não</div></div></label>
           </div>
         </div>
         <div>
@@ -1527,15 +1598,15 @@
       <div class="field-group">
         <label>Provas e Documentos Coletados <span class="hint">(marque todos que foram obtidos)</span></label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_provasEmpresa">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">📷 Fotografias</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">🎥 Vídeos</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">📋 Boletim de Ocorrência</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">💰 Orçamento de Reparo</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">👥 Depoimentos Informais</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">📄 Laudo Técnico</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">🚦 Auto de Infração</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">🔧 Histórico de Manutenção</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox" name="provas"> <div class="opt-label">📑 Outros Documentos</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">📷 Fotografias</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">🎥 Vídeos</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">📋 Boletim de Ocorrência</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">💰 Orçamento de Reparo</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">👥 Depoimentos Informais</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">📄 Laudo Técnico</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">🚦 Auto de Infração</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">🔧 Histórico de Manutenção</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox" name="provas"> <div class="opt-label">📑 Outros Documentos</div></label>
         </div>
       </div>
 
@@ -1556,11 +1627,11 @@
       <div class="field-group">
         <label>A CAAA deliberou pela instauração do processo formal? <span class="req">*</span></label>
         <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_instaurar">
-          <label class="opt-item" onclick="toggleOpt(this)">
+          <label class="opt-item" onclick="toggleOpt(this);return false;">
             <input type="radio" name="instaurar" value="sim">
             <div><div class="opt-label">✅ Sim — há indícios mínimos</div><div class="opt-sub">Processo será instaurado formalmente</div></div>
           </label>
-          <label class="opt-item" onclick="toggleOpt(this)">
+          <label class="opt-item" onclick="toggleOpt(this);return false;">
             <input type="radio" name="instaurar" value="nao">
             <div><div class="opt-label">🗂️ Não — arquivamento</div><div class="opt-sub">Processo será arquivado por ausência de indícios</div></div>
           </label>
@@ -1654,9 +1725,9 @@
       <div class="field-group">
         <label>Forma de Notificação ao Empregado <span class="req">*</span></label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_formaNotif">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="formaNotif"> <div><div class="opt-label">📝 Recibo Assinado</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="formaNotif"> <div><div class="opt-label">👁️ Recusa c/ Testemunhas</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="formaNotif"> <div><div class="opt-label">📬 Outro Meio</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="formaNotif"> <div><div class="opt-label">📝 Recibo Assinado</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="formaNotif"> <div><div class="opt-label">👁️ Recusa c/ Testemunhas</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="formaNotif"> <div><div class="opt-label">📬 Outro Meio</div></div></label>
         </div>
       </div>
 
@@ -1700,9 +1771,9 @@
       <div class="field-group">
         <label>Empregado compareceu à reunião? <span class="req">*</span></label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_compareceu">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="compareceu"> <div><div class="opt-label">✅ Sim, compareceu</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="compareceu"> <div><div class="opt-label">❌ Não compareceu s/ justificativa</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="compareceu"> <div><div class="opt-label">📋 Justificou ausência</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="compareceu"> <div><div class="opt-label">✅ Sim, compareceu</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="compareceu"> <div><div class="opt-label">❌ Não compareceu s/ justificativa</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="compareceu"> <div><div class="opt-label">📋 Justificou ausência</div></div></label>
         </div>
       </div>
 
@@ -1717,9 +1788,9 @@
       <div class="field-group">
         <label>Modalidade da Defesa</label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_modalDefesa">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="modalDefesa"> <div><div class="opt-label">📄 Escrita (pelo empregado)</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="modalDefesa"> <div><div class="opt-label">🖊️ Reduzida a termo pela empresa</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="modalDefesa"> <div><div class="opt-label">🔇 Não apresentou defesa</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="modalDefesa"> <div><div class="opt-label">📄 Escrita (pelo empregado)</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="modalDefesa"> <div><div class="opt-label">🖊️ Reduzida a termo pela empresa</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="modalDefesa"> <div><div class="opt-label">🔇 Não apresentou defesa</div></div></label>
         </div>
       </div>
 
@@ -1733,12 +1804,12 @@
       <div class="field-group">
         <label>Provas Apresentadas pelo Empregado</label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_provasEmpregado">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">📷 Fotos / Vídeos</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">💰 Orçamento Alternativo</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">👥 Provas Testemunhais</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">📄 Documentos</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">🔧 Laudos / Perícias</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">🗂️ Outros</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">📷 Fotos / Vídeos</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">💰 Orçamento Alternativo</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">👥 Provas Testemunhais</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">📄 Documentos</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">🔧 Laudos / Perícias</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">🗂️ Outros</div></label>
         </div>
       </div>
 
@@ -1748,9 +1819,9 @@
       <div class="field-group">
         <label>Foi identificada falha de manutenção, desgaste natural ou falha imputável à empresa? <span class="req">*</span></label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_falhaManu">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="falhaManu"> <div><div class="opt-label">✅ Sim — falha da empresa</div><div class="opt-sub">Desconto/penalidade vedados</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="falhaManu"> <div><div class="opt-label">🔸 Parcialmente</div><div class="opt-sub">Concausa — mitigar penalidade</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="falhaManu"> <div><div class="opt-label">❌ Não — bem em boas condições</div><div class="opt-sub">Desconto pode ser aplicado</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="falhaManu"> <div><div class="opt-label">✅ Sim — falha da empresa</div><div class="opt-sub">Desconto/penalidade vedados</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="falhaManu"> <div><div class="opt-label">🔸 Parcialmente</div><div class="opt-sub">Concausa — mitigar penalidade</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="falhaManu"> <div><div class="opt-label">❌ Não — bem em boas condições</div><div class="opt-sub">Desconto pode ser aplicado</div></div></label>
         </div>
       </div>
 
@@ -1767,17 +1838,17 @@
       <div class="field-group">
         <label>O empregado solicitou prazo para produção de contraprovas?</label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_solicitouPrazo">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">✅ Sim — prazo concedido</div><div class="opt-sub">Máx. 5 dias úteis</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">❌ Não solicitou</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">🚫 Solicitou, mas negado</div><div class="opt-sub">Com fundamentação</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">✅ Sim — prazo concedido</div><div class="opt-sub">Máx. 5 dias úteis</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">❌ Não solicitou</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="solicitouPrazo"> <div><div class="opt-label">🚫 Solicitou, mas negado</div><div class="opt-sub">Com fundamentação</div></div></label>
         </div>
       </div>
 
       <div class="field-group">
         <label>A reunião foi gravada?</label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_gravada">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="gravada"> <div><div class="opt-label">🎙️ Sim — com consentimento de todos</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="gravada"> <div><div class="opt-label">📝 Não — ata detalhada lavrada</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="gravada"> <div><div class="opt-label">🎙️ Sim — com consentimento de todos</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="gravada"> <div><div class="opt-label">📝 Não — ata detalhada lavrada</div></div></label>
         </div>
       </div>
 
@@ -1896,10 +1967,10 @@
       <div class="field-group">
         <label>Penalidade Aplicada <span class="req">*</span></label>
         <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_penalidade">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="penalidade"> <div><div class="opt-label">📋 Advertência</div><div class="opt-sub">Falta leve, primeira ocorrência</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="penalidade"> <div><div class="opt-label">⏸️ Suspensão</div><div class="opt-sub">Informe o número de dias</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="penalidade"> <div><div class="opt-label">🔴 Justa Causa</div><div class="opt-sub">Dolo comprovado / falta grave</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="penalidade"> <div><div class="opt-label">💼 Apenas Desconto</div><div class="opt-sub">Sem penalidade disciplinar</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="penalidade"> <div><div class="opt-label">📋 Advertência</div><div class="opt-sub">Falta leve, primeira ocorrência</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="penalidade"> <div><div class="opt-label">⏸️ Suspensão</div><div class="opt-sub">Informe o número de dias</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="penalidade"> <div><div class="opt-label">🔴 Justa Causa</div><div class="opt-sub">Dolo comprovado / falta grave</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="penalidade"> <div><div class="opt-label">💼 Apenas Desconto</div><div class="opt-sub">Sem penalidade disciplinar</div></div></label>
         </div>
       </div>
 
@@ -1914,22 +1985,22 @@
       <div class="field-group">
         <label>Haverá desconto salarial?</label>
         <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_haDesconto">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haDesconto"> <div><div class="opt-label">✅ Sim</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="haDesconto"> <div><div class="opt-label">❌ Não</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="haDesconto"> <div><div class="opt-label">✅ Sim</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="haDesconto"> <div><div class="opt-label">❌ Não</div></div></label>
         </div>
       </div>
 
       <div class="field-group">
         <label>Natureza do Desconto <span class="hint">(marque o(s) aplicável(eis))</span></label>
         <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_natDesconto">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🚗 Dano/Avaria a Veículo ou Equipamento</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🚦 Multa de Trânsito</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">📦 Perda de Carga</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🏚️ Dano a Bem de Terceiro</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🧾 Vale Acerto de Viagem</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">👔 Uniforme (mau uso / não devolução)</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🧪 Exame Toxicológico</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div><div class="opt-label">🍽️ Vale Alimentação</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">🚗 Dano/Avaria a Veículo ou Equipamento</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">🚦 Multa de Trânsito</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">📦 Perda de Carga</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">🏚️ Dano a Bem de Terceiro</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">🧾 Vale Acerto de Viagem</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">👔 Uniforme (mau uso / não devolução)</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">🧪 Exame Toxicológico</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div><div class="opt-label">🍽️ Vale Alimentação</div></div></label>
         </div>
       </div>
 
@@ -1983,8 +2054,8 @@
       <div class="field-group">
         <label>Desconto em Haveres Rescisórios? <span class="hint">(CCT – Cláusula 7ª, § 4º)</span></label>
         <div class="options-grid cols-2" style="margin-top:6px;" data-gid="grid_rescisorio">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="rescisorio"> <div><div class="opt-label">✅ Sim — autorizado pela CCT</div><div class="opt-sub">Acima do limite do art. 477, § 5º, CLT</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="rescisorio"> <div><div class="opt-label">❌ Não aplicável</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="rescisorio"> <div><div class="opt-label">✅ Sim — autorizado pela CCT</div><div class="opt-sub">Acima do limite do art. 477, § 5º, CLT</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="rescisorio"> <div><div class="opt-label">❌ Não aplicável</div></div></label>
         </div>
       </div>
 
@@ -2012,9 +2083,9 @@
       <div class="field-group">
         <label>O empregado interpôs recurso administrativo?</label>
         <div class="options-grid cols-3" style="margin-top:6px;" data-gid="grid_recurso">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="recurso"> <div><div class="opt-label">✅ Sim, interpôs recurso</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="recurso"> <div><div class="opt-label">❌ Não interpôs recurso</div></div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="radio" name="recurso"> <div><div class="opt-label">⏰ Prazo ainda em curso</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="recurso"> <div><div class="opt-label">✅ Sim, interpôs recurso</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="recurso"> <div><div class="opt-label">❌ Não interpôs recurso</div></div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="radio" name="recurso"> <div><div class="opt-label">⏰ Prazo ainda em curso</div></div></label>
         </div>
       </div>
 
@@ -2850,14 +2921,14 @@
       <div class="field-group">
         <label>Tipo de prova/documento que está sendo apresentado <span class="hint">(marque os aplicáveis)</span></label>
         <div class="options-grid cols-3" style="margin-top:8px;" data-gid="grid_provasDI">
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">📷 Fotografias</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">🎥 Vídeos</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">💰 Orçamento Alternativo</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">👥 Testemunhas</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">📄 Documentos escritos</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">🔧 Laudo técnico</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">📋 Boletim de Ocorrência</div></label>
-          <label class="opt-item" onclick="toggleOpt(this)"><input type="checkbox"> <div class="opt-label">🗂️ Outros</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">📷 Fotografias</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">🎥 Vídeos</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">💰 Orçamento Alternativo</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">👥 Testemunhas</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">📄 Documentos escritos</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">🔧 Laudo técnico</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">📋 Boletim de Ocorrência</div></label>
+          <label class="opt-item" onclick="toggleOpt(this);return false;"><input type="checkbox"> <div class="opt-label">🗂️ Outros</div></label>
         </div>
       </div>
       <div style="margin-top:12px;">
@@ -3876,13 +3947,25 @@
 
     if (input.type === 'radio') {
       const name = input.name;
-      document.querySelectorAll(`input[name="${name}"]`).forEach(r => r.closest('.opt-item').classList.remove('selected'));
-      el.classList.add('selected');
+      const jaSelected = input.checked;
+      // Desmarca todos do mesmo grupo
+      document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+        r.checked = false;
+        r.closest('.opt-item').classList.remove('selected');
+      });
+      if (!jaSelected) {
+        // Marca o clicado (só se não estava marcado)
+        input.checked = true;
+        el.classList.add('selected');
+      }
+      // Se jaSelected === true, ficou desmarcado — toggle OK
     } else {
+      // Checkbox: pointer-events:none no input, então togglamos manualmente
+      input.checked = !input.checked;
       el.classList.toggle('selected', input.checked);
     }
 
-    // Registra e fixa texto abaixo do grupo (igual ao padrao dos votos)
+    // Registra e fixa texto abaixo do grupo (igual ao padrão dos votos)
     if (!grid) return;
     let rid = grid.dataset.rid;
     if (!rid) {
@@ -3907,7 +3990,7 @@
       return txt;
     });
 
-    // Cria ou atualiza div de registro logo apos o grid
+    // Cria ou atualiza div de registro logo após o grid
     let regDiv = document.getElementById(rid);
     if (!regDiv) {
       regDiv = document.createElement('div');
@@ -3975,33 +4058,37 @@
   }
 
   function selectDecision(el, val) {
+    const jaSelected = el.classList.contains('selected-card');
     document.querySelectorAll('#sec4 .decision-card').forEach(c => c.classList.remove('selected-card'));
-    el.classList.add('selected-card');
-    document.getElementById('decisaoTipo').value = val;
     const textoEl = document.getElementById('decisaoTexto');
-    if (textoEl) {
-      textoEl.textContent = DECISAO_LABELS[val] || '';
-      textoEl.style.display = val ? 'block' : 'none';
+    if (jaSelected) {
+      // Clicou no mesmo — desmarca
+      document.getElementById('decisaoTipo').value = '';
+      if (textoEl) { textoEl.textContent = ''; textoEl.style.display = 'none'; }
+    } else {
+      el.classList.add('selected-card');
+      document.getElementById('decisaoTipo').value = val;
+      if (textoEl) { textoEl.textContent = DECISAO_LABELS[val] || ''; textoEl.style.display = val ? 'block' : 'none'; }
+      syncFcDecisao(val);
     }
-    // Sincronizar automaticamente com Comunicação da Decisão
-    syncFcDecisao(val);
   }
 
   // Chamado ao clicar nos cards do próprio formComunicacao
   function fcSelectDecisao(el, val) {
+    const jaSelected = el.classList.contains('selected-card');
     el.closest('.comunicacao-block').querySelectorAll('.decision-card').forEach(function(c){ c.classList.remove('selected-card'); });
-    el.classList.add('selected-card');
     var fcHidden = document.getElementById('fc_decisao');
-    if (fcHidden) fcHidden.value = val;
     var fcTexto = document.getElementById('fc_decisaoTexto');
-    if (fcTexto) {
-      fcTexto.textContent = DECISAO_LABELS[val] || '';
-      fcTexto.style.display = val ? 'block' : 'none';
-    }
-    // Sugerir penalidade
-    var fcPen = document.getElementById('fc_penalidade');
-    if (fcPen && (!fcPen.value || fcPen.value === '')) {
-      fcPen.value = DECISAO_PENALIDADE[val] || '';
+    if (jaSelected) {
+      // Desmarca
+      if (fcHidden) fcHidden.value = '';
+      if (fcTexto) { fcTexto.textContent = ''; fcTexto.style.display = 'none'; }
+    } else {
+      el.classList.add('selected-card');
+      if (fcHidden) fcHidden.value = val;
+      if (fcTexto) { fcTexto.textContent = DECISAO_LABELS[val] || ''; fcTexto.style.display = val ? 'block' : 'none'; }
+      var fcPen = document.getElementById('fc_penalidade');
+      if (fcPen && (!fcPen.value || fcPen.value === '')) { fcPen.value = DECISAO_PENALIDADE[val] || ''; }
     }
   }
 
@@ -4012,14 +4099,18 @@
   };
 
   function selectVoto(el, prefix, val) {
+    const jaSelected = el.classList.contains('voto-selected');
     el.closest('.parecer-member-body').querySelectorAll('.voto-opt').forEach(v => v.classList.remove('voto-selected'));
-    el.classList.add('voto-selected');
-    document.getElementById(prefix + 'voto').value = val;
-    // Show text label below voto grid
+    const hidden = document.getElementById(prefix + 'voto');
     const textoEl = document.getElementById(prefix + 'votoTexto');
-    if (textoEl) {
-      textoEl.textContent = VOTO_LABELS[val] || '';
-      textoEl.style.display = val ? 'block' : 'none';
+    if (jaSelected) {
+      // Desmarca
+      if (hidden) hidden.value = '';
+      if (textoEl) { textoEl.textContent = ''; textoEl.style.display = 'none'; }
+    } else {
+      el.classList.add('voto-selected');
+      if (hidden) hidden.value = val;
+      if (textoEl) { textoEl.textContent = VOTO_LABELS[val] || ''; textoEl.style.display = val ? 'block' : 'none'; }
     }
   }
 
@@ -4558,17 +4649,20 @@
   };
 
   function diSelectVoto(el, prefix, val) {
-    // Deselect siblings in same panel
+    const jaSelected = el.classList.contains('selected-card');
     el.closest('.comunicacao-block').querySelectorAll('.decision-card').forEach(function(c) {
       c.classList.remove('selected-card');
     });
-    el.classList.add('selected-card');
     var hidden = document.getElementById(prefix + '_voto');
-    if (hidden) hidden.value = val;
     var textoEl = document.getElementById(prefix + '_votoTexto');
-    if (textoEl) {
-      textoEl.textContent = DI_VOTO_LABELS[val] || '';
-      textoEl.style.display = val ? 'block' : 'none';
+    if (jaSelected) {
+      // Desmarca
+      if (hidden) hidden.value = '';
+      if (textoEl) { textoEl.textContent = ''; textoEl.style.display = 'none'; }
+    } else {
+      el.classList.add('selected-card');
+      if (hidden) hidden.value = val;
+      if (textoEl) { textoEl.textContent = DI_VOTO_LABELS[val] || ''; textoEl.style.display = val ? 'block' : 'none'; }
     }
   }
 
@@ -4688,12 +4782,7 @@
     });
   })();
 
-  // Checkbox toggle
-  document.querySelectorAll('.opt-item input').forEach(function(input) {
-    input.addEventListener('change', function() {
-      if (input.type === 'checkbox') input.closest('.opt-item').classList.toggle('selected', input.checked);
-    });
-  });
+  // Estado visual dos checkboxes/radios gerenciado por toggleOpt() via onclick.
 
   // ============================================================
   // LOCK SCREEN — SENHA DE ACESSO
